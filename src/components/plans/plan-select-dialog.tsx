@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createCustomer, subscribeCustomerToPlan } from "@/app/actions"
+import { createCustomer } from "@/app/actions"
 import { Loader2 } from "lucide-react"
 
 interface CustomerFormDialogProps {
@@ -25,7 +25,7 @@ interface CustomerFormDialogProps {
   planName: string
 }
 
-export function CustomerFormDialog({ isOpen, onClose, planId, planName }: CustomerFormDialogProps) {
+export function CustomerFormDialog({ isOpen, onClose, planName }: CustomerFormDialogProps) {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
