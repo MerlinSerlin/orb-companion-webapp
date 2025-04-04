@@ -25,7 +25,7 @@ interface CustomerFormDialogProps {
   planName: string
 }
 
-export function CustomerFormDialog({ isOpen, onClose, planId, planName }: CustomerFormDialogProps) {
+export function CustomerFormDialog({ isOpen, onClose, planName }: CustomerFormDialogProps) {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
