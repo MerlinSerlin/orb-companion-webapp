@@ -47,7 +47,7 @@ export function PlanSelectionDialog() {
 
       // Show success toast
       toast.success("Successfully subscribed!", {
-        description: "You're all set to start using our service.",
+        description: `You're all set to start using our service.`,
         icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
         duration: 5000,
       })
@@ -70,7 +70,7 @@ export function PlanSelectionDialog() {
         <DialogHeader>
           <DialogTitle>Subscribe to Plan</DialogTitle>
           <DialogDescription>
-            You're about to subscribe to our service. Review the details below.
+            You&apos;re about to subscribe to our service. Review the details below.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
