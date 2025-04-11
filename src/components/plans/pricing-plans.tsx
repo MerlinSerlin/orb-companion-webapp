@@ -37,6 +37,10 @@ export function PricingPlans() {
         planId: planId,
       })
 
+      if (!result) {
+        throw new Error('Failed to create subscription')
+      }
+
       // Update subscription in store
       setSubscription({
         id: result.id,
