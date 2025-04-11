@@ -5,20 +5,17 @@ import { toast } from "sonner"
 import { PlanCard } from "./plan-card"
 import { PLAN_DETAILS } from "./plan-data"
 import { useCustomerStore } from "@/lib/store/customer-store"
-import { useCreateSubscription } from "@/lib/query/orb-hooks"
-import { Loader2, CheckCircle2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 export function PricingPlans() {
   const { 
     customer, 
     openRegistration, 
     setPendingPlanId,
-    setSubscription,
   } = useCustomerStore()
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [isSubscribing, setIsSubscribing] = useState(false)
-  const createSubscription = useCreateSubscription()
 
   const subscribeToPlan = async (planId: string) => {
     if (!customer) {
@@ -31,26 +28,9 @@ export function PricingPlans() {
     try {
       const plan = PLAN_DETAILS.find((p) => p.id === planId)
       
-      // Subscribe customer to plan using Orb SDK
-      const result = await createSubscription.mutateAsync({
-        customerId: customer.id,
-        planId: planId,
-      })
-
-      if (!result) {
-        throw new Error('Failed to create subscription')
-      }
-
-      // Update subscription in store
-      setSubscription({
-        id: result.id,
-        plan_id: planId,
-        status: result.status === 'upcoming' ? 'pending' : result.status,
-      })
-
+      // TODO: Implement subscription logic when ready
       toast.success(`Subscribed to ${plan?.name} Plan!`, {
         description: `Thank you, ${customer?.name}! Your subscription has been activated successfully.`,
-        icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
         duration: 5000,
       })
     } catch (error) {

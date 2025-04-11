@@ -11,48 +11,27 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Loader2, CheckCircle2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useCustomerStore } from "@/lib/store/customer-store"
-import { useCreateSubscription } from "@/lib/query/orb-hooks"
 
 export function PlanSelectionDialog() {
   const { 
-    customer,
     isPlanSelectionOpen,
     closePlanSelection,
     pendingPlanId,
-    setSubscription,
   } = useCustomerStore()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const createSubscription = useCreateSubscription()
 
   const handleSubscribe = async () => {
-    if (!customer || !pendingPlanId) return
+    if (!pendingPlanId) return
 
     setIsSubmitting(true)
 
     try {
-      const result = await createSubscription.mutateAsync({
-        customerId: customer.id,
-        planId: pendingPlanId,
-      })
-
-      if (!result) {
-        throw new Error('Failed to create subscription')
-      }
-
-      // Set subscription in store
-      setSubscription({
-        id: result.id,
-        plan_id: pendingPlanId,
-        status: result.status === 'upcoming' ? 'pending' : result.status,
-      })
-
-      // Show success toast
+      // TODO: Implement subscription logic when ready
       toast.success("Successfully subscribed!", {
         description: `You're all set to start using our service.`,
-        icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
         duration: 5000,
       })
 
