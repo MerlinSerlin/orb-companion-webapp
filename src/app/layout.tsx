@@ -1,6 +1,7 @@
 import type React from "react"
 import { Toaster } from "sonner"
 import "@/app/globals.css"
+import { QueryProvider } from "@/lib/query/query-provider"
 
 export default function RootLayout({
   children,
@@ -9,10 +10,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        {children}
-        <Toaster />
-      </body>
+      <QueryProvider>
+        <body>
+          {children}
+          <Toaster />
+        </body>
+      </QueryProvider>
     </html>
   )
 }

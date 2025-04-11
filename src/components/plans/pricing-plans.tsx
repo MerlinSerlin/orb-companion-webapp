@@ -1,29 +1,74 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import { PlanCard } from "./plan-card"
 import { PLAN_DETAILS } from "./plan-data"
-import { CustomerFormDialog } from "./plan-select-dialog"
+import { useCustomerStore } from "@/lib/store/customer-store"
+import { useCreateSubscription } from "@/lib/query/orb-hooks"
+import { Loader2, CheckCircle2 } from "lucide-react"
 
 export function PricingPlans() {
+  const { 
+    customer, 
+    openRegistration, 
+    setPendingPlanId,
+    setSubscription,
+  } = useCustomerStore()
+
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
-  const [selectedPlanName, setSelectedPlanName] = useState<string>("")
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isSubscribing, setIsSubscribing] = useState(false)
+  const createSubscription = useCreateSubscription()
 
-  const handleSelectPlan = (planId: string) => {
-    setSelectedPlan(planId)
-
-    const plan = PLAN_DETAILS.find((p) => p.id === planId)
-    if (plan) {
-      setSelectedPlanName(plan.name)
+  const subscribeToPlan = async (planId: string) => {
+    if (!customer) {
+      return
     }
 
-    // Open the dialog to collect user information
-    setIsDialogOpen(true)
+    setSelectedPlan(planId)
+    setIsSubscribing(true)
+
+    try {
+      const plan = PLAN_DETAILS.find((p) => p.id === planId)
+      
+      // Subscribe customer to plan using Orb SDK
+      const result = await createSubscription.mutateAsync({
+        customerId: customer.id,
+        planId: planId,
+      })
+
+      // Update subscription in store
+      setSubscription({
+        id: result.id,
+        plan_id: planId,
+        status: result.status === 'upcoming' ? 'pending' : result.status,
+      })
+
+      toast.success(`Subscribed to ${plan?.name} Plan!`, {
+        description: `Thank you, ${customer?.name}! Your subscription has been activated successfully.`,
+        icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
+        duration: 5000,
+      })
+    } catch (error) {
+      toast.error("Subscription Error", {
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        duration: 5000,
+      })
+    } finally {
+      setIsSubscribing(false)
+      setSelectedPlan(null)
+    }
   }
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false)
+  const handleSelectPlan = (planId: string) => {
+    if (!customer) {
+      // Store the selected plan ID and open registration
+      setPendingPlanId(planId)
+      openRegistration()
+    } else {
+      // User is already authenticated, proceed with subscription
+      subscribeToPlan(planId)
+    }
   }
 
   return (
@@ -41,9 +86,19 @@ export function PricingPlans() {
               description={plan.description}
               price={plan.price}
               features={plan.features}
-              cta={plan.cta}
+              cta={
+                isSubscribing && selectedPlan === plan.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  plan.cta
+                )
+              }
               popular={plan.popular}
               onSelect={() => handleSelectPlan(plan.id)}
+              disabled={isSubscribing}
             />
           ))}
         </div>
@@ -57,17 +112,13 @@ export function PricingPlans() {
           </a>
         </div>
       </div>
-
-      {/* Customer Form Dialog */}
-      <CustomerFormDialog
-        isOpen={isDialogOpen}
-        onClose={handleCloseDialog}
-        planId={selectedPlan || ""}
-        planName={selectedPlanName}
-      />
     </section>
   )
 }
+
+
+
+
 
 
 
