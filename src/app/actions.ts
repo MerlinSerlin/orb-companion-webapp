@@ -1,7 +1,6 @@
 "use server"
 
 import { orbClient } from "@/lib/orb"
-import { revalidatePath } from 'next/cache'
 
 export async function createCustomer(name: string, email: string) {
   try {

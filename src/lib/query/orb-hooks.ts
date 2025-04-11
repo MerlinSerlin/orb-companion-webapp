@@ -1,5 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCustomerStore } from '../store/customer-store'
+import { useMutation } from '@tanstack/react-query'
 import { createCustomer } from '@/app/actions'
 
 // Hook to create a customer
