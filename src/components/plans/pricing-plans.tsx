@@ -1,29 +1,58 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import { PlanCard } from "./plan-card"
 import { PLAN_DETAILS } from "./plan-data"
-import { CustomerFormDialog } from "./plan-select-dialog"
+import { useCustomerStore } from "@/lib/store/customer-store"
+import { Loader2 } from "lucide-react"
 
 export function PricingPlans() {
+  const { 
+    customer, 
+    openRegistration, 
+    setPendingPlanId,
+  } = useCustomerStore()
+
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
-  const [selectedPlanName, setSelectedPlanName] = useState<string>("")
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isSubscribing, setIsSubscribing] = useState(false)
 
-  const handleSelectPlan = (planId: string) => {
-    setSelectedPlan(planId)
-
-    const plan = PLAN_DETAILS.find((p) => p.id === planId)
-    if (plan) {
-      setSelectedPlanName(plan.name)
+  const subscribeToPlan = async (planId: string) => {
+    if (!customer) {
+      return
     }
 
-    // Open the dialog to collect user information
-    setIsDialogOpen(true)
+    setSelectedPlan(planId)
+    setIsSubscribing(true)
+
+    try {
+      const plan = PLAN_DETAILS.find((p) => p.id === planId)
+      
+      // TODO: Implement subscription logic when ready
+      toast.success(`Subscribed to ${plan?.name} Plan!`, {
+        description: `Thank you, ${customer?.name}! Your subscription has been activated successfully.`,
+        duration: 5000,
+      })
+    } catch (error) {
+      toast.error("Subscription Error", {
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        duration: 5000,
+      })
+    } finally {
+      setIsSubscribing(false)
+      setSelectedPlan(null)
+    }
   }
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false)
+  const handleSelectPlan = (planId: string) => {
+    if (!customer) {
+      // Store the selected plan ID and open registration
+      setPendingPlanId(planId)
+      openRegistration()
+    } else {
+      // User is already authenticated, proceed with subscription
+      subscribeToPlan(planId)
+    }
   }
 
   return (
@@ -41,9 +70,19 @@ export function PricingPlans() {
               description={plan.description}
               price={plan.price}
               features={plan.features}
-              cta={plan.cta}
+              cta={
+                isSubscribing && selectedPlan === plan.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  plan.cta
+                )
+              }
               popular={plan.popular}
               onSelect={() => handleSelectPlan(plan.id)}
+              disabled={isSubscribing}
             />
           ))}
         </div>
@@ -57,17 +96,13 @@ export function PricingPlans() {
           </a>
         </div>
       </div>
-
-      {/* Customer Form Dialog */}
-      <CustomerFormDialog
-        isOpen={isDialogOpen}
-        onClose={handleCloseDialog}
-        planId={selectedPlan || ""}
-        planName={selectedPlanName}
-      />
     </section>
   )
 }
+
+
+
+
 
 
 
