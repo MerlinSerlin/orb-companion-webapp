@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCustomerStore } from '../store/customer-store'
+import { orbClient } from '@/lib/orb'
 import { 
   getCustomerSubscriptions, 
   getSubscriptionUsage, 
@@ -7,6 +8,8 @@ import {
   getAvailablePlans,
   getPlanDetails,
   cancelSubscription,
+  getSubscriptionCosts,
+  createPriceSimulation,
 } from '@/app/actions'
 
 // Hook to fetch customer subscriptions
@@ -112,8 +115,9 @@ export function useSubscriptionCosts(subscriptionId?: string) {
     queryKey: ['costs', customer?.id, subscriptionId],
     queryFn: async () => {
       if (!customer || !subscriptionId) return null
-      const costs = await orbClient.subscriptions.fetchCosts(subscriptionId)
-      return costs.data
+      const result = await getSubscriptionCosts(subscriptionId)
+      if (!result.success) throw new Error(result.error)
+      return result.costs
     },
     enabled: !!customer && !!subscriptionId,
   })
@@ -123,16 +127,9 @@ export function useSubscriptionCosts(subscriptionId?: string) {
 export function useCreatePriceSimulation() {
   return useMutation({
     mutationFn: async ({ customerId, planId }: { customerId: string; planId: string }) => {
-      const simulation = await orbClient.prices.evaluate(
-        planId,
-        {
-          customer_id: customerId,
-          // Add any additional simulation parameters as needed
-          timeframe_end: new Date().toISOString(),
-          timeframe_start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Last 30 days
-        }
-      )
-      return simulation
+      const result = await createPriceSimulation(customerId, planId)
+      if (!result.success) throw new Error(result.error)
+      return result.simulation
     },
   })
 } 

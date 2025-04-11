@@ -25,11 +25,13 @@ export async function createCustomer(name: string, email: string) {
     console.error("Error creating customer:", error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to create customer",
+      error: error instanceof Error ? error.message : `Failed to create customer`,
     }
   }
 }
 
+// Commenting out unused actions for now
+/*
 export async function createSubscription(customerId: string, planId: string) {
   try {
     console.log(`Subscribing customer ${customerId} to plan ${planId}`)
@@ -167,6 +169,46 @@ export async function cancelSubscription(subscriptionId: string) {
     }
   }
 }
+
+export async function getSubscriptionCosts(subscriptionId: string) {
+  try {
+    const costs = await orbClient.subscriptions.fetchCosts(subscriptionId)
+    return {
+      success: true,
+      costs: costs.data,
+    }
+  } catch (error) {
+    console.error('Error fetching subscription costs:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch subscription costs',
+    }
+  }
+}
+
+export async function createPriceSimulation(customerId: string, planId: string) {
+  try {
+    const simulation = await orbClient.prices.evaluate(
+      planId,
+      {
+        customer_id: customerId,
+        timeframe_end: new Date().toISOString(),
+        timeframe_start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Last 30 days
+      }
+    )
+    return {
+      success: true,
+      simulation,
+    }
+  } catch (error) {
+    console.error('Error creating price simulation:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create price simulation',
+    }
+  }
+}
+*/
 
 
 
