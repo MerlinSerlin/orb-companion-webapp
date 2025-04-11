@@ -38,6 +38,10 @@ export function PlanSelectionDialog() {
         planId: pendingPlanId,
       })
 
+      if (!result) {
+        throw new Error('Failed to create subscription')
+      }
+
       // Set subscription in store
       setSubscription({
         id: result.id,
