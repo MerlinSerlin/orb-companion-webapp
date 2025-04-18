@@ -54,7 +54,7 @@ export function PlanSelectionDialog() {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Subscribe to Plan</DialogTitle>
-          <DialogDescription>You're about to subscribe to our service. Review the details below.</DialogDescription>
+          <DialogDescription>You&apos;re about to subscribe to our service. Review the details below.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubscribe}>
           <div className="grid gap-4 py-4">

@@ -15,7 +15,6 @@ interface FormFieldProps {
   disabled?: boolean
   required?: boolean
   pattern?: string
-  className?: string
   labelClassName?: string
   inputClassName?: string
   gridClassName?: string
@@ -32,7 +31,6 @@ export function FormField({
   disabled = false,
   required = false,
   pattern,
-  className = "grid gap-2",
   labelClassName = "text-right",
   inputClassName = "col-span-3",
   gridClassName = "grid grid-cols-4 items-center gap-4",

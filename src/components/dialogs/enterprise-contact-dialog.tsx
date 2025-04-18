@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
-import { useCustomerStore } from "@/lib/store/customer-store"
 import {
   Dialog,
   DialogContent,
@@ -56,7 +55,7 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
       toast.success("Request submitted successfully!")
       onOpenChange(false)
     } catch (error) {
-      toast.error("Error submitting request")
+      toast.error(`Error submitting request: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsSubmitting(false)
     }
