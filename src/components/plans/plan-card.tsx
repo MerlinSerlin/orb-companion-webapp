@@ -49,8 +49,12 @@ export function PlanCard({
         <CardTitle className="text-2xl">{name}</CardTitle>
         <CardDescription>{description}</CardDescription>
         <div className="mt-4">
-          <span className="text-4xl font-bold">{price}</span>
-          <span className="text-muted-foreground ml-1">/month</span>
+          {price && (
+            <>
+              <span className="text-4xl font-bold">{price}</span>
+              <span className="text-muted-foreground ml-1">/month</span>
+            </>
+          )}
         </div>
       </CardHeader>
 
@@ -62,7 +66,7 @@ export function PlanCard({
                 <Check className="h-3.5 w-3.5" />
               </div>
               <div>
-                <span className="font-medium">{feature.name}: </span>
+                <span className="font-medium">{feature.name}{feature.value ? ': ' : ''}</span>
                 {feature.value}
               </div>
             </li>

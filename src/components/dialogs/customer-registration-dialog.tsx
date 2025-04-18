@@ -1,8 +1,10 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { CheckCircle2, Loader2 } from "lucide-react"
+import { createCustomer } from "@/app/actions"
+import { useCustomerStore } from "@/lib/store/customer-store" 
 import {
   Dialog,
   DialogContent,
@@ -12,11 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { createCustomer } from "@/app/actions"
-import { Loader2, CheckCircle2 } from "lucide-react"
-import { useCustomerStore } from "@/lib/store/customer-store"
+import { FormField } from "@/components/ui/form-field"
 
 export function CustomerRegistrationDialog() {
   const { 
@@ -28,14 +26,24 @@ export function CustomerRegistrationDialog() {
     pendingPlanId 
   } = useCustomerStore()
 
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
+  const [formData, setFormData] = useState({
+    name: "",
+    email: ""
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!name || !email) {
+    if (!formData.name || !formData.email) {
       toast.error("Please fill in all fields")
       return
     }
@@ -44,7 +52,7 @@ export function CustomerRegistrationDialog() {
 
     try {
       // Create customer
-      const customerResult = await createCustomer(name, email)
+      const customerResult = await createCustomer(formData.name, formData.email)
 
       if (!customerResult.success) {
         throw new Error(customerResult.error || "Failed to create customer")
@@ -58,22 +66,21 @@ export function CustomerRegistrationDialog() {
       // Set customer in store
       const newCustomer = {
         id: customerResult.customerId,
-        name,
-        email,
+        name: formData.name,
+        email: formData.email,
       }
       setCustomer(newCustomer)
 
       // Show success toast with more details
       toast.success("Account created successfully!", {
-        description: `Welcome to NimbusScale, ${name}! You can now select a plan.`,
+        description: `Welcome to NimbusScale, ${formData.name}! You can now select a plan.`,
         icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
         duration: 5000,
       })
 
       // Close the dialog and reset form
       closeRegistration()
-      setName("")
-      setEmail("")
+      setFormData({ name: "", email: "" })
 
       // If there's a pending plan, open the plan selection dialog
       if (pendingPlanId) {
@@ -106,29 +113,33 @@ export function CustomerRegistrationDialog() {
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name"
-                disabled={isSubmitting}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                disabled={isSubmitting}
-                required
-              />
-            </div>
+            <FormField
+              id="name"
+              name="name"
+              label="Name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Enter your name"
+              disabled={isSubmitting}
+              required
+              gridClassName="grid gap-2"
+              labelClassName=""
+              inputClassName=""
+            />
+            <FormField
+              id="email"
+              name="email"
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your email"
+              disabled={isSubmitting}
+              required
+              gridClassName="grid gap-2"
+              labelClassName=""
+              inputClassName=""
+            />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
