@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useCustomerStore } from "@/lib/store/customer-store"
 import {
   Dialog,
   DialogContent,
@@ -10,9 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Loader2 } from "lucide-react"
-import { useCustomerStore } from "@/lib/store/customer-store"
 
 export function PlanSelectionDialog() {
   const { 
@@ -23,7 +23,9 @@ export function PlanSelectionDialog() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
     if (!pendingPlanId) return
 
     setIsSubmitting(true)
@@ -52,28 +54,30 @@ export function PlanSelectionDialog() {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Subscribe to Plan</DialogTitle>
-          <DialogDescription>
-            You&apos;re about to subscribe to our service. Review the details below.
-          </DialogDescription>
+          <DialogDescription>You're about to subscribe to our service. Review the details below.</DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <p className="text-sm text-gray-500">
-            Selected Plan ID: <code className="text-sm">{pendingPlanId}</code>
-          </p>
-          {/* We can add more plan details here once we have them */}
-        </div>
-        <DialogFooter>
-          <Button onClick={handleSubscribe} disabled={isSubmitting || !pendingPlanId}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Subscribing...
-              </>
-            ) : (
-              "Subscribe Now"
-            )}
-          </Button>
-        </DialogFooter>
+        <form onSubmit={handleSubscribe}>
+          <div className="grid gap-4 py-4">
+            <div className="py-2">
+              <p className="text-sm text-gray-500">
+                Selected Plan ID: <code className="text-sm">{pendingPlanId}</code>
+              </p>
+              {/* We can add more plan details here once we have them */}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting || !pendingPlanId}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Subscribing...
+                </>
+              ) : (
+                "Subscribe Now"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

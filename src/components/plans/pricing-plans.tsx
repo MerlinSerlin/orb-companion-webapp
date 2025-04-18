@@ -6,6 +6,7 @@ import { PlanCard } from "./plan-card"
 import { PLAN_DETAILS } from "./plan-data"
 import { useCustomerStore } from "@/lib/store/customer-store"
 import { Loader2 } from "lucide-react"
+import { EnterpriseContactDialog } from "../dialogs/enterprise-contact-dialog"
 
 export function PricingPlans() {
   const { 
@@ -16,6 +17,7 @@ export function PricingPlans() {
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [isSubscribing, setIsSubscribing] = useState(false)
+  const [isEnterpriseDialogOpen, setIsEnterpriseDialogOpen] = useState(false)
 
   const subscribeToPlan = async (planId: string) => {
     if (!customer) {
@@ -45,6 +47,11 @@ export function PricingPlans() {
   }
 
   const handleSelectPlan = (planId: string) => {
+    if (planId === "plan_enterprise") {
+      setIsEnterpriseDialogOpen(true)
+      return
+    }
+
     if (!customer) {
       // Store the selected plan ID and open registration
       setPendingPlanId(planId)
@@ -96,6 +103,11 @@ export function PricingPlans() {
           </a>
         </div>
       </div>
+
+      <EnterpriseContactDialog 
+        open={isEnterpriseDialogOpen} 
+        onOpenChange={setIsEnterpriseDialogOpen} 
+      />
     </section>
   )
 }
