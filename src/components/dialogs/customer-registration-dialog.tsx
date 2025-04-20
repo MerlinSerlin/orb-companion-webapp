@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { CheckCircle2, Loader2 } from "lucide-react"
 import { createCustomer } from "@/app/actions"
@@ -42,6 +42,11 @@ export function CustomerRegistrationDialog({
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // When the dialog is opened, log the pendingPlanId
+  useEffect(() => {
+    // Log removed, but keeping effect for future potential needs
+  }, [isOpen, pendingPlanId]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -61,6 +66,9 @@ export function CustomerRegistrationDialog({
     setIsSubmitting(true)
 
     try {
+      // Store pendingPlanId in a local variable to preserve it
+      const selectedPlanId = pendingPlanId;
+      
       // Create customer
       const customerResult = await createCustomer(formData.name, formData.email)
 
@@ -93,11 +101,18 @@ export function CustomerRegistrationDialog({
       onClose()
       setFormData({ name: "", email: "" })
 
+      // Use the locally stored planId to ensure it wasn't cleared during the API call
       // If there's a pending plan and it's not the enterprise plan, open the plan selection dialog
-      if (pendingPlanId && pendingPlanId !== "plan_enterprise" && onOpenPlanSelection) {
-        setTimeout(() => {
-          onOpenPlanSelection()
-        }, 500)
+      if (selectedPlanId && selectedPlanId !== "plan_enterprise" && onOpenPlanSelection) {
+        // We need to make sure the pendingPlanId is still set when opening the plan selection dialog
+        // This might have been cleared elsewhere, so we need to re-set it
+        if (onOpenPlanSelection) {
+          setTimeout(() => {
+            // We don't have direct access to setPendingPlanId here, but
+            // onOpenPlanSelection will handle this for us via the registrationWasSuccessful flag
+            onOpenPlanSelection();
+          }, 500);
+        }
       }
       // Otherwise, execute the success callback if it exists
       else if (registrationSuccessCallback) {
@@ -145,7 +160,17 @@ export function CustomerRegistrationDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) {
+          // When dialog is closed manually (by clicking outside or pressing ESC)
+          // reset the form and call onClose which should preserve pendingPlanId if needed
+          setFormData({ name: "", email: "" });
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create Your Account</DialogTitle>

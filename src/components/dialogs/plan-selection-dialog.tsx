@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,19 +14,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
+import { PLAN_DETAILS } from "../plans/plan-data"
 
 interface PlanSelectionDialogProps {
   pendingPlanId: string | null
   onPlanSelected?: () => void
   isOpen: boolean
   onClose: () => void
+  onSubscriptionSuccess?: () => void
 }
 
 export function PlanSelectionDialog({ 
   pendingPlanId, 
   onPlanSelected,
   isOpen,
-  onClose
+  onClose,
+  onSubscriptionSuccess
 }: PlanSelectionDialogProps) {
   const { 
     customer,
@@ -34,11 +37,17 @@ export function PlanSelectionDialog({
   } = useCustomerStore()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState<typeof PLAN_DETAILS[0] | null>(null)
+
+  // Set the selected plan when pendingPlanId changes
+  useEffect(() => {
+    setSelectedPlan(pendingPlanId ? PLAN_DETAILS.find(plan => plan.id === pendingPlanId) || null : null);
+  }, [pendingPlanId]);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!pendingPlanId || !customer) return
+    if (!pendingPlanId || !customer || !selectedPlan) return
 
     setIsSubmitting(true)
 
@@ -56,13 +65,18 @@ export function PlanSelectionDialog({
       // TODO: Implement actual subscription creation with Orb API when ready
       
       toast.success("Successfully subscribed!", {
-        description: `You're all set to start using our service with the ${pendingPlanId.replace('plan_', '').toUpperCase()} plan.`,
+        description: `You're all set to start using our service with the ${selectedPlan.name} plan.`,
         duration: 5000,
       })
 
-      // Call the callback if provided
+      // Call the callbacks if provided
       if (onPlanSelected) {
         onPlanSelected()
+      }
+      
+      // Notify parent of subscription success
+      if (onSubscriptionSuccess) {
+        onSubscriptionSuccess()
       }
 
       // Close the dialog
@@ -105,7 +119,15 @@ export function PlanSelectionDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) {
+          // When dialog is closed without subscribing, call onClose
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Subscribe to Plan</DialogTitle>
@@ -113,12 +135,34 @@ export function PlanSelectionDialog({
         </DialogHeader>
         <form onSubmit={handleSubscribe}>
           <div className="grid gap-4 py-4">
-            <div className="py-2">
-              <div className="text-sm text-gray-500">
-                Selected Plan ID: <code className="text-sm">{pendingPlanId}</code>
+            {selectedPlan ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">{selectedPlan.name} Plan</h3>
+                  {selectedPlan.price && (
+                    <div className="text-lg font-bold">{selectedPlan.price}<span className="text-sm text-muted-foreground">/month</span></div>
+                  )}
+                </div>
+                
+                <p className="text-muted-foreground">{selectedPlan.description}</p>
+                
+                <div className="pt-2">
+                  <h4 className="text-sm font-medium mb-2">Plan Features:</h4>
+                  <ul className="space-y-1 text-sm">
+                    {selectedPlan.features.map((feature, index) => (
+                      <li key={index} className="flex items-center justify-between">
+                        <span>{feature.name}:</span>
+                        <span className="font-medium">{feature.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              {/* We can add more plan details here once we have them */}
-            </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No plan selected. Please select a plan first.
+              </div>
+            )}
 
             <div className="flex items-center justify-between mt-2">
               <ApiPreviewDialog
@@ -133,7 +177,7 @@ export function PlanSelectionDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !customer}>
+            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !customer || !selectedPlan}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,15 +1,19 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { useCustomerStore } from "@/lib/store/customer-store"
+import { SignUpButton } from "./sign-up-button"
+import { CustomerRegistrationDialog } from "@/components/dialogs/customer-registration-dialog"
 
 export function Header() {
   const { 
-    customer, 
-    openRegistration,
+    customer,
     reset 
   } = useCustomerStore()
+  
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
 
   const handleLogout = () => {
     reset() // This will clear all state including customer and subscription
@@ -20,7 +24,7 @@ export function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between">
         <Logo />
         <div className="flex items-center gap-4">
-          {customer ? (
+          {customer && (
             <>
               <span className="text-sm text-muted-foreground">
                 Welcome, {customer.name}
@@ -29,13 +33,17 @@ export function Header() {
                 Logout
               </Button>
             </>
-          ) : (
-            <Button onClick={() => openRegistration()}>
-              Sign Up
-            </Button>
           )}
+          <SignUpButton onClick={() => setIsRegistrationOpen(true)} />
         </div>
       </div>
+      
+      <CustomerRegistrationDialog 
+        pendingPlanId={null} 
+        isOpen={isRegistrationOpen}
+        onClose={() => setIsRegistrationOpen(false)}
+        registrationSuccessCallback={null}
+      />
     </header>
   )
 }

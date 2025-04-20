@@ -1,11 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { toast } from "sonner"
 import { PlanCard } from "./plan-card"
 import { PLAN_DETAILS } from "./plan-data"
 import { useCustomerStore } from "@/lib/store/customer-store"
-import { Loader2 } from "lucide-react"
 import { EnterpriseContactDialog } from "../dialogs/enterprise-contact-dialog"
 
 interface PricingPlansProps {
@@ -15,32 +13,16 @@ interface PricingPlansProps {
 }
 
 export function PricingPlans({ 
-  pendingPlanId: externalPendingPlanId, 
+  pendingPlanId, 
   onPendingPlanIdChange,
   openRegistration 
 }: PricingPlansProps) {
   const { 
-    customer,
-    setSubscription 
+    customer
   } = useCustomerStore()
 
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
-  const [isSubscribing, setIsSubscribing] = useState(false)
   const [isEnterpriseDialogOpen, setIsEnterpriseDialogOpen] = useState(false)
-  const [internalPendingPlanId, setInternalPendingPlanId] = useState<string | null>(null)
   
-  // Use either external or internal pendingPlanId
-  const pendingPlanId = externalPendingPlanId !== undefined ? externalPendingPlanId : internalPendingPlanId
-  
-  // Function to set pendingPlanId that updates either external or internal state
-  const setPendingPlanId = (planId: string | null) => {
-    if (onPendingPlanIdChange) {
-      onPendingPlanIdChange(planId)
-    } else {
-      setInternalPendingPlanId(planId)
-    }
-  }
-
   // Check if we need to show enterprise dialog after login
   useEffect(() => {
     if (customer && pendingPlanId === "plan_enterprise") {
@@ -51,55 +33,26 @@ export function PricingPlans({
     }
   }, [customer, pendingPlanId])
 
-  const subscribeToPlan = async (planId: string) => {
-    if (!customer) return;
-    
-    setSelectedPlan(planId)
-    setIsSubscribing(true)
-
-    try {
-      const plan = PLAN_DETAILS.find((p) => p.id === planId)
-      
-      // Create a new subscription for the customer
-      const newSubscription = {
-        id: `sub_${Math.random().toString(36).substr(2, 9)}`, // Mock ID for now
-        plan_id: planId,
-        status: 'active' as const,
-      }
-      
-      // Update the customer's subscription in the store
-      setSubscription(newSubscription)
-      
-      toast.success(`Subscribed to ${plan?.name} Plan!`, {
-        description: `Thank you, ${customer.name}! Your subscription has been activated successfully.`,
-        duration: 5000,
-      })
-    } catch (error) {
-      toast.error("Subscription Error", {
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        duration: 5000,
-      })
-    } finally {
-      setIsSubscribing(false)
-      setSelectedPlan(null)
-    }
-  }
-
-  // Simple function to handle all plan selections
+  // Function to handle when a user selects a plan
   const handlePlanSelection = (planId: string) => {
-    // If user is not logged in, store plan and redirect to registration
-    if (!customer) {
-      setPendingPlanId(planId)
-      openRegistration()
-      return
+    // Validate planId (basic check only)
+    if (!planId) {
+      return;
     }
     
-    // User is logged in, handle the plan action
-    if (planId === "plan_enterprise") {
-      setIsEnterpriseDialogOpen(true)
-    } else {
-      subscribeToPlan(planId)
+    // Update the parent component with the selected plan ID
+    if (onPendingPlanIdChange) {
+      onPendingPlanIdChange(planId);
     }
+
+    if (!customer) {
+      // If user is not logged in, redirect to registration
+      openRegistration();
+    } else if (planId === "plan_enterprise") {
+      // For enterprise plan, show the enterprise dialog
+      setIsEnterpriseDialogOpen(true);
+    }
+    // No else needed - parent component will handle opening plan selection dialog
   }
 
   // Check if customer is already subscribed to this plan
@@ -126,21 +79,10 @@ export function PricingPlans({
                 description={plan.description}
                 price={plan.price}
                 features={plan.features}
-                cta={
-                  isSubscribing && selectedPlan === plan.id ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : isCurrentPlan ? (
-                    "Current Plan"
-                  ) : (
-                    plan.cta
-                  )
-                }
+                cta={isCurrentPlan ? "Current Plan" : plan.cta}
                 popular={plan.popular}
                 onSelect={() => handlePlanSelection(plan.id)}
-                disabled={isSubscribing || isCurrentPlan}
+                disabled={isCurrentPlan}
                 isCurrentPlan={isCurrentPlan}
               />
             );
