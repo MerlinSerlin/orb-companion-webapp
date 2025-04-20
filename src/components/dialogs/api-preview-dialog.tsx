@@ -15,11 +15,13 @@ import { Info, Copy, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
+type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
+
 interface ApiPreviewDialogProps {
   // The API payload to display
-  payload: Record<string, any>
+  payload: Record<string, JsonValue>
   // Sample response (optional)
-  response?: Record<string, any>
+  response?: Record<string, JsonValue>
   // API endpoint information
   endpoint?: string
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
@@ -60,7 +62,7 @@ export function ApiPreviewDialog({
       }
     : payload
 
-  const copyToClipboard = async (content: any) => {
+  const copyToClipboard = async (content: Record<string, JsonValue> | JsonValue) => {
     await navigator.clipboard.writeText(
       typeof content === 'string' 
         ? content 
@@ -76,7 +78,7 @@ export function ApiPreviewDialog({
         <Button 
           variant={buttonVariant} 
           size={buttonSize}
-          className="gap-1.5"
+          className={cn("gap-1.5", className)}
         >
           <Info className="h-4 w-4" />
           {buttonText}
