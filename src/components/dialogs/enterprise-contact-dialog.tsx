@@ -30,26 +30,19 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
     buildMinutes: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formSubmitted, setFormSubmitted] = useState(false)
 
-  // Reset form when dialog opens
+  // Reset form when dialog opens or closes
   useEffect(() => {
-    if (open) {
-      // Reset the form if it was previously submitted and dialog is reopening
-      if (formSubmitted) {
-        setFormSubmitted(false);
-      }
+    // Reset form when dialog is closed
+    if (!open) {
+      setFormData({
+        bandwidth: "",
+        edgeRequests: "",
+        storage: "",
+        buildMinutes: "",
+      });
     }
-  }, [open, formSubmitted]);
-
-  const resetForm = () => {
-    setFormData({
-      bandwidth: "",
-      edgeRequests: "",
-      storage: "",
-      buildMinutes: "",
-    });
-  };
+  }, [open]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -92,11 +85,7 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
         toast.success("Request submitted successfully!")
       }
       
-      // Mark the form as submitted
-      setFormSubmitted(true);
-      // Reset the form for next time
-      resetForm();
-      // Close the dialog
+      // Close the dialog - the form will be reset by the useEffect
       onOpenChange(false);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Error submitting request";
@@ -138,16 +127,7 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
   }
 
   return (
-    <Dialog 
-      open={open} 
-      onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          // When dialog is being closed, reset the form for next time
-          resetForm();
-        }
-        onOpenChange(isOpen);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Enterprise Plan Request</DialogTitle>
