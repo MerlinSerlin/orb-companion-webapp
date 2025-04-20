@@ -15,12 +15,22 @@ import {
 } from "@/components/ui/dialog"
 import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 
-export function PlanSelectionDialog() {
+interface PlanSelectionDialogProps {
+  pendingPlanId: string | null
+  onPlanSelected?: () => void
+  isOpen: boolean
+  onClose: () => void
+}
+
+export function PlanSelectionDialog({ 
+  pendingPlanId, 
+  onPlanSelected,
+  isOpen,
+  onClose
+}: PlanSelectionDialogProps) {
   const { 
-    isPlanSelectionOpen,
-    closePlanSelection,
-    pendingPlanId,
-    customer
+    customer,
+    setSubscription
   } = useCustomerStore()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -28,19 +38,35 @@ export function PlanSelectionDialog() {
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!pendingPlanId) return
+    if (!pendingPlanId || !customer) return
 
     setIsSubmitting(true)
 
     try {
-      // TODO: Implement subscription logic when ready
+      // Create a new subscription object
+      const newSubscription = {
+        id: `sub_${Math.random().toString(36).substr(2, 9)}`, // Mock ID for now
+        plan_id: pendingPlanId,
+        status: 'active' as const,
+      }
+      
+      // Update the customer's subscription in the store
+      setSubscription(newSubscription)
+
+      // TODO: Implement actual subscription creation with Orb API when ready
+      
       toast.success("Successfully subscribed!", {
-        description: `You're all set to start using our service.`,
+        description: `You're all set to start using our service with the ${pendingPlanId.replace('plan_', '').toUpperCase()} plan.`,
         duration: 5000,
       })
 
+      // Call the callback if provided
+      if (onPlanSelected) {
+        onPlanSelected()
+      }
+
       // Close the dialog
-      closePlanSelection()
+      onClose()
     } catch (error) {
       toast.error("Error creating subscription", {
         description: error instanceof Error ? error.message : "An unknown error occurred",
@@ -79,7 +105,7 @@ export function PlanSelectionDialog() {
   }
 
   return (
-    <Dialog open={isPlanSelectionOpen} onOpenChange={(open) => !open && closePlanSelection()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Subscribe to Plan</DialogTitle>
@@ -107,7 +133,7 @@ export function PlanSelectionDialog() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting || !pendingPlanId}>
+            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !customer}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

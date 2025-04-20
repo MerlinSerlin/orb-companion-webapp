@@ -17,14 +17,23 @@ import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
 import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 
-export function CustomerRegistrationDialog() {
+interface CustomerRegistrationDialogProps {
+  pendingPlanId: string | null
+  onOpenPlanSelection?: () => void
+  isOpen: boolean
+  onClose: () => void
+  registrationSuccessCallback: (() => void) | null
+}
+
+export function CustomerRegistrationDialog({ 
+  pendingPlanId, 
+  onOpenPlanSelection,
+  isOpen,
+  onClose,
+  registrationSuccessCallback
+}: CustomerRegistrationDialogProps) {
   const { 
-    isRegistrationOpen, 
-    closeRegistration, 
-    setCustomer, 
-    registrationSuccessCallback,
-    openPlanSelection,
-    pendingPlanId 
+    setCustomer
   } = useCustomerStore()
 
   const [formData, setFormData] = useState({
@@ -69,6 +78,7 @@ export function CustomerRegistrationDialog() {
         id: customerResult.customerId,
         name: formData.name,
         email: formData.email,
+        subscription: null
       }
       setCustomer(newCustomer)
 
@@ -80,13 +90,13 @@ export function CustomerRegistrationDialog() {
       })
 
       // Close the dialog and reset form
-      closeRegistration()
+      onClose()
       setFormData({ name: "", email: "" })
 
-      // If there's a pending plan, open the plan selection dialog
-      if (pendingPlanId) {
+      // If there's a pending plan and it's not the enterprise plan, open the plan selection dialog
+      if (pendingPlanId && pendingPlanId !== "plan_enterprise" && onOpenPlanSelection) {
         setTimeout(() => {
-          openPlanSelection()
+          onOpenPlanSelection()
         }, 500)
       }
       // Otherwise, execute the success callback if it exists
@@ -135,7 +145,7 @@ export function CustomerRegistrationDialog() {
   }
 
   return (
-    <Dialog open={isRegistrationOpen} onOpenChange={(open) => !open && closeRegistration()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create Your Account</DialogTitle>

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check, Sparkles } from "lucide-react"
+import { Check, Sparkles, CheckCircle } from "lucide-react"
 import type { ReactNode } from "react"
 
 interface PlanFeature {
@@ -19,6 +19,7 @@ interface PlanCardProps {
   popular?: boolean
   onSelect: () => void
   disabled?: boolean
+  isCurrentPlan?: boolean
 }
 
 export function PlanCard({
@@ -30,18 +31,27 @@ export function PlanCard({
   popular = false,
   onSelect,
   disabled = false,
+  isCurrentPlan = false,
 }: PlanCardProps) {
   return (
     <Card
       className={`w-full max-w-sm flex flex-col relative overflow-hidden group transition-transform duration-300 hover:scale-[1.02] ${
         popular ? "border-primary shadow-lg" : ""
-      }`}
+      } ${isCurrentPlan ? "border-green-500 shadow-md" : ""}`}
     >
       {popular && (
         <div className="bg-primary text-primary-foreground text-center py-1.5 text-sm font-medium flex items-center justify-center gap-1">
           <Sparkles className="h-3.5 w-3.5" />
           <span>Most Popular</span>
           <Sparkles className="h-3.5 w-3.5" />
+        </div>
+      )}
+
+      {isCurrentPlan && (
+        <div className="bg-green-500 text-white text-center py-1.5 text-sm font-medium flex items-center justify-center gap-1">
+          <CheckCircle className="h-3.5 w-3.5" />
+          <span>Current Plan</span>
+          <CheckCircle className="h-3.5 w-3.5" />
         </div>
       )}
 
@@ -77,8 +87,8 @@ export function PlanCard({
       <CardFooter>
         <Button
           onClick={onSelect}
-          className={`w-full relative z-10 ${popular ? "bg-primary hover:bg-primary/90" : "bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary"}`}
-          variant={popular ? "default" : "ghost"}
+          className={`w-full relative z-10 ${popular ? "bg-primary hover:bg-primary/90" : "bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary"} ${isCurrentPlan ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}
+          variant={popular ? "default" : isCurrentPlan ? "default" : "ghost"}
           disabled={disabled}
         >
           {cta}

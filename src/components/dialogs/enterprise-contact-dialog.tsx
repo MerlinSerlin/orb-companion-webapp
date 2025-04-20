@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
+import { useCustomerStore } from "@/lib/store/customer-store"
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ interface EnterpriseContactDialogProps {
 }
 
 export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContactDialogProps) {
+  const { customer, setSubscription } = useCustomerStore()
   const [formData, setFormData] = useState({
     bandwidth: "",
     edgeRequests: "",
@@ -52,8 +54,24 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
     setIsSubmitting(true)
     
     try {
-      // TODO: Implement the actual submission logic
-      toast.success("Request submitted successfully!")
+      // Create a subscription for the enterprise plan if the customer is logged in
+      if (customer) {
+        const enterpriseSubscription = {
+          id: `sub_${Math.random().toString(36).substr(2, 9)}`, // Mock ID for now
+          plan_id: "plan_enterprise",
+          status: 'pending' as const, // Enterprise plans typically start as pending until approved
+        }
+        
+        setSubscription(enterpriseSubscription)
+        
+        toast.success("Enterprise plan request submitted!", {
+          description: "Our team will contact you soon with a custom quote based on your requirements.",
+          duration: 5000,
+        })
+      } else {
+        toast.success("Request submitted successfully!")
+      }
+      
       onOpenChange(false)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Error submitting request";
@@ -144,7 +162,7 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
                 method="POST"
                 title="Create Enterprise Plan"
                 description="This API call will create a custom enterprise plan in Orb with the requirements specified."
-                buttonText="Show API Schema"
+                buttonText="Preview API Call"
               />
             </div>
           </div>
