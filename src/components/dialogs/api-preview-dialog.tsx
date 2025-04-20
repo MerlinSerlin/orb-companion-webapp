@@ -33,6 +33,8 @@ interface ApiPreviewDialogProps {
   buttonSize?: "default" | "sm" | "lg" | "icon"
   buttonText?: string
   className?: string
+  // Height of the code preview area (default: 400px)
+  codeHeight?: number
 }
 
 export function ApiPreviewDialog({ 
@@ -45,7 +47,8 @@ export function ApiPreviewDialog({
   buttonVariant = "outline",
   buttonSize = "sm",
   buttonText = "Preview API Call",
-  className
+  className,
+  codeHeight = 400
 }: ApiPreviewDialogProps) {
   const [open, setOpen] = React.useState(false)
   const [copied, setCopied] = React.useState(false)
@@ -107,7 +110,7 @@ export function ApiPreviewDialog({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="relative">
+        <div className="relative mt-4">
           <Button
             size="sm"
             variant="ghost"
@@ -123,7 +126,7 @@ export function ApiPreviewDialog({
           </Button>
           
           {response ? (
-            <Tabs defaultValue="request" className="mt-4">
+            <Tabs defaultValue="request">
               <TabsList>
                 <TabsTrigger value="request">
                   Request
@@ -132,30 +135,36 @@ export function ApiPreviewDialog({
                   Response
                 </TabsTrigger>
               </TabsList>
-              <div className="h-[350px] overflow-auto mt-2 border rounded-md">
+              <div className="mt-2 border rounded-md relative" style={{ height: `${codeHeight}px` }}>
                 <TabsContent value="request" className="m-0 h-full">
-                  <CodeBlock 
-                    code={fullRequest} 
-                    language="json"
-                    className="border-0 h-full"
-                  />
+                  <div className="overflow-auto h-full">
+                    <CodeBlock 
+                      code={fullRequest} 
+                      language="json"
+                      className="border-0"
+                    />
+                  </div>
                 </TabsContent>
                 <TabsContent value="response" className="m-0 h-full">
-                  <CodeBlock 
-                    code={response} 
-                    language="json"
-                    className="border-0 h-full"
-                  />
+                  <div className="overflow-auto h-full">
+                    <CodeBlock 
+                      code={response} 
+                      language="json"
+                      className="border-0"
+                    />
+                  </div>
                 </TabsContent>
               </div>
             </Tabs>
           ) : (
-            <div className="mt-4 h-[350px] overflow-auto border rounded-md">
-              <CodeBlock 
-                code={fullRequest} 
-                language="json"
-                className="border-0 h-full"
-              />
+            <div className="border rounded-md" style={{ height: `${codeHeight}px` }}>
+              <div className="overflow-auto h-full">
+                <CodeBlock 
+                  code={fullRequest} 
+                  language="json"
+                  className="border-0"
+                />
+              </div>
             </div>
           )}
         </div>
