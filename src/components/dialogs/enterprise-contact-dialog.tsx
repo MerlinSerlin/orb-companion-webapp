@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { useCustomerStore } from "@/lib/store/customer-store"
@@ -30,6 +30,26 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
     buildMinutes: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formSubmitted, setFormSubmitted] = useState(false)
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (open) {
+      // Reset the form if it was previously submitted and dialog is reopening
+      if (formSubmitted) {
+        setFormSubmitted(false);
+      }
+    }
+  }, [open, formSubmitted]);
+
+  const resetForm = () => {
+    setFormData({
+      bandwidth: "",
+      edgeRequests: "",
+      storage: "",
+      buildMinutes: "",
+    });
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -72,7 +92,12 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
         toast.success("Request submitted successfully!")
       }
       
-      onOpenChange(false)
+      // Mark the form as submitted
+      setFormSubmitted(true);
+      // Reset the form for next time
+      resetForm();
+      // Close the dialog
+      onOpenChange(false);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Error submitting request";
       toast.error(errorMessage)
@@ -113,7 +138,16 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog 
+      open={open} 
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          // When dialog is being closed, reset the form for next time
+          resetForm();
+        }
+        onOpenChange(isOpen);
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Enterprise Plan Request</DialogTitle>
