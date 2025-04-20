@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { CheckCircle2, Loader2 } from "lucide-react"
 import { createCustomer } from "@/app/actions"
@@ -17,14 +17,23 @@ import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
 import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 
-export function CustomerRegistrationDialog() {
+interface CustomerRegistrationDialogProps {
+  pendingPlanId: string | null
+  onOpenPlanSelection?: () => void
+  isOpen: boolean
+  onClose: () => void
+  registrationSuccessCallback: (() => void) | null
+}
+
+export function CustomerRegistrationDialog({ 
+  pendingPlanId, 
+  onOpenPlanSelection,
+  isOpen,
+  onClose,
+  registrationSuccessCallback
+}: CustomerRegistrationDialogProps) {
   const { 
-    isRegistrationOpen, 
-    closeRegistration, 
-    setCustomer, 
-    registrationSuccessCallback,
-    openPlanSelection,
-    pendingPlanId 
+    setCustomer
   } = useCustomerStore()
 
   const [formData, setFormData] = useState({
@@ -32,6 +41,11 @@ export function CustomerRegistrationDialog() {
     email: ""
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // When the dialog is opened, log the pendingPlanId
+  useEffect(() => {
+    // Log removed, but keeping effect for future potential needs
+  }, [isOpen, pendingPlanId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -52,6 +66,9 @@ export function CustomerRegistrationDialog() {
     setIsSubmitting(true)
 
     try {
+      // Store pendingPlanId in a local variable to preserve it
+      const selectedPlanId = pendingPlanId;
+      
       // Create customer
       const customerResult = await createCustomer(formData.name, formData.email)
 
@@ -69,6 +86,7 @@ export function CustomerRegistrationDialog() {
         id: customerResult.customerId,
         name: formData.name,
         email: formData.email,
+        subscription: null
       }
       setCustomer(newCustomer)
 
@@ -80,14 +98,21 @@ export function CustomerRegistrationDialog() {
       })
 
       // Close the dialog and reset form
-      closeRegistration()
+      onClose()
       setFormData({ name: "", email: "" })
 
-      // If there's a pending plan, open the plan selection dialog
-      if (pendingPlanId) {
-        setTimeout(() => {
-          openPlanSelection()
-        }, 500)
+      // Use the locally stored planId to ensure it wasn't cleared during the API call
+      // If there's a pending plan and it's not the enterprise plan, open the plan selection dialog
+      if (selectedPlanId && selectedPlanId !== "plan_enterprise" && onOpenPlanSelection) {
+        // We need to make sure the pendingPlanId is still set when opening the plan selection dialog
+        // This might have been cleared elsewhere, so we need to re-set it
+        if (onOpenPlanSelection) {
+          setTimeout(() => {
+            // We don't have direct access to setPendingPlanId here, but
+            // onOpenPlanSelection will handle this for us via the registrationWasSuccessful flag
+            onOpenPlanSelection();
+          }, 500);
+        }
       }
       // Otherwise, execute the success callback if it exists
       else if (registrationSuccessCallback) {
@@ -135,7 +160,17 @@ export function CustomerRegistrationDialog() {
   }
 
   return (
-    <Dialog open={isRegistrationOpen} onOpenChange={(open) => !open && closeRegistration()}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) {
+          // When dialog is closed manually (by clicking outside or pressing ESC)
+          // reset the form and call onClose which should preserve pendingPlanId if needed
+          setFormData({ name: "", email: "" });
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create Your Account</DialogTitle>
