@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
+import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 
 interface EnterpriseContactDialogProps {
   open: boolean
@@ -55,9 +56,41 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
       toast.success("Request submitted successfully!")
       onOpenChange(false)
     } catch (error) {
-      toast.error(`Error submitting request: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      const errorMessage = error instanceof Error ? error.message : "Error submitting request";
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Prepare API schema data based on Orb API for creating a price plan
+  const apiRequestBody = {
+    name: "Enterprise Plan",
+    description: "Custom enterprise plan",
+    currency: "USD",
+    usage_requirements: {
+      bandwidth_gb: parseInt(formData.bandwidth) || 5000,
+      edge_requests: parseInt(formData.edgeRequests) || 10000000,
+      storage_gb: parseInt(formData.storage) || 2000,
+      build_minutes: parseInt(formData.buildMinutes) || 2000
+    },
+    metadata: {
+      plan_type: "enterprise",
+      custom_quote: true
+    }
+  }
+
+  const sampleResponse = {
+    id: "plan_enterprise_custom",
+    name: "Enterprise Plan",
+    status: "active",
+    created_at: new Date().toISOString(),
+    currency: "USD",
+    usage_requirements: {
+      bandwidth_gb: parseInt(formData.bandwidth) || 5000,
+      edge_requests: parseInt(formData.edgeRequests) || 10000000,
+      storage_gb: parseInt(formData.storage) || 2000,
+      build_minutes: parseInt(formData.buildMinutes) || 2000
     }
   }
 
@@ -102,6 +135,18 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
               onChange={handleInputChange}
               placeholder="Enter minutes"
             />
+            
+            <div className="flex items-center justify-between mt-2">
+              <ApiPreviewDialog
+                payload={apiRequestBody}
+                response={sampleResponse}
+                endpoint="https://api.withorb.com/v1/plans"
+                method="POST"
+                title="Create Enterprise Plan"
+                description="This API call will create a custom enterprise plan in Orb with the requirements specified."
+                buttonText="Show API Schema"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>

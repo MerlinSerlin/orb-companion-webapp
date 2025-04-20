@@ -13,12 +13,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 
 export function PlanSelectionDialog() {
   const { 
     isPlanSelectionOpen,
     closePlanSelection,
     pendingPlanId,
+    customer
   } = useCustomerStore()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -49,6 +51,33 @@ export function PlanSelectionDialog() {
     }
   }
 
+  // Prepare API schema data based on Orb API for creating a subscription
+  const apiRequestBody = {
+    customer_id: customer?.id || "cust_12345abcdef",
+    plan_id: pendingPlanId || "plan_basic",
+    auto_collection: true,
+    net_terms: 0,
+    // Optional fields:
+    // billing_cycle_day: 1,
+    // coupon_redemption_code: "DISCOUNT50",
+    // default_invoice_memo: "Thanks for subscribing!",
+    // invoicing_threshold: 0,
+    // metadata: { "signup_source": "website" },
+    // minimum_commitment: { amount: "1000", currency: "USD" },
+    // price_overrides: [],
+  }
+
+  const sampleResponse = {
+    id: "sub_12345abcdef",
+    customer_id: customer?.id || "cust_12345abcdef",
+    plan_id: pendingPlanId || "plan_basic",
+    status: "active",
+    created_at: new Date().toISOString(),
+    start_date: new Date().toISOString(),
+    auto_collection: true,
+    net_terms: 0
+  }
+
   return (
     <Dialog open={isPlanSelectionOpen} onOpenChange={(open) => !open && closePlanSelection()}>
       <DialogContent className="sm:max-w-[425px]">
@@ -59,10 +88,22 @@ export function PlanSelectionDialog() {
         <form onSubmit={handleSubscribe}>
           <div className="grid gap-4 py-4">
             <div className="py-2">
-              <p className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500">
                 Selected Plan ID: <code className="text-sm">{pendingPlanId}</code>
-              </p>
+              </div>
               {/* We can add more plan details here once we have them */}
+            </div>
+
+            <div className="flex items-center justify-between mt-2">
+              <ApiPreviewDialog
+                payload={apiRequestBody}
+                response={sampleResponse}
+                endpoint="https://api.withorb.com/v1/subscriptions"
+                method="POST"
+                title="Create Subscription"
+                description="This API call will create a new subscription in Orb for the selected plan."
+                buttonText="Preview API Call"
+              />
             </div>
           </div>
           <DialogFooter>
