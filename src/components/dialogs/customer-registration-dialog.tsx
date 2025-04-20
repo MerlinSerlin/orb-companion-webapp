@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
+import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 
 export function CustomerRegistrationDialog() {
   const { 
@@ -104,6 +105,35 @@ export function CustomerRegistrationDialog() {
     }
   }
 
+  // Prepare API schema data based on Orb API docs
+  const apiRequestBody = {
+    email: formData.email || "customer@example.com",
+    name: formData.name || "Example Customer",
+    external_customer_id: formData.name.replace(/\s+/g, '_') || "example_customer",
+    // Additional optional fields are commented out to keep the display cleaner
+    // accounting_sync_configuration: { provider: "string", external_id: "string" },
+    // additional_emails: ["user@example.com"],
+    // auto_collection: true,
+    // billing_address: { line1: "string", line2: "string", city: "string", state: "string", postal_code: "string", country: "string" },
+    // currency: "USD",
+    // email_delivery: true,
+    // metadata: { "key": "value" },
+    // payment_provider: "string",
+    // payment_provider_id: "string",
+    // shipping_address: { line1: "string", line2: "string", city: "string", state: "string", postal_code: "string", country: "string" },
+    // tax_id: { country: "US", type: "us_ein", value: "string" },
+    // timezone: "America/Los_Angeles"
+  }
+
+  const sampleResponse = {
+    id: "cust_12345abcdef",
+    name: formData.name || "Example Customer",
+    email: formData.email || "customer@example.com",
+    external_customer_id: formData.name.replace(/\s+/g, '_') || "example_customer",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+
   return (
     <Dialog open={isRegistrationOpen} onOpenChange={(open) => !open && closeRegistration()}>
       <DialogContent className="sm:max-w-[425px]">
@@ -140,6 +170,18 @@ export function CustomerRegistrationDialog() {
               labelClassName=""
               inputClassName=""
             />
+
+            <div className="flex items-center justify-between mt-2">
+              <ApiPreviewDialog
+                payload={apiRequestBody}
+                response={sampleResponse}
+                endpoint="https://api.withorb.com/v1/customers"
+                method="POST"
+                title="Create Orb Customer"
+                description="This API call will create a new customer in Orb with the information provided."
+                buttonText="Preview API Call"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
