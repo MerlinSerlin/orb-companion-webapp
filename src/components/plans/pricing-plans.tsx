@@ -33,6 +33,18 @@ export function PricingPlans({
     }
   }, [customer, pendingPlanId])
 
+  // Add a handler for when the enterprise dialog is closed
+  const handleEnterpriseDialogChange = (isOpen: boolean) => {
+    setIsEnterpriseDialogOpen(isOpen);
+    
+    // If dialog is closed and not by ESC key or clicking outside,
+    // we can assume a form was submitted or user intentionally closed it
+    if (!isOpen && pendingPlanId === "plan_enterprise" && onPendingPlanIdChange) {
+      // Clear the pendingPlanId to prevent the dialog from reopening
+      onPendingPlanIdChange(null);
+    }
+  }
+
   // Function to handle when a user selects a plan
   const handlePlanSelection = (planId: string) => {
     // Validate planId (basic check only)
@@ -104,7 +116,7 @@ export function PricingPlans({
 
       <EnterpriseContactDialog 
         open={isEnterpriseDialogOpen} 
-        onOpenChange={setIsEnterpriseDialogOpen} 
+        onOpenChange={handleEnterpriseDialogChange} 
       />
     </section>
   )
