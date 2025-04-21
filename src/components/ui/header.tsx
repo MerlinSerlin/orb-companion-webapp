@@ -39,7 +39,6 @@ export function Header() {
       </div>
       
       <CustomerRegistrationDialog 
-        pendingPlanId={null} 
         isOpen={isRegistrationOpen}
         onClose={() => setIsRegistrationOpen(false)}
         registrationSuccessCallback={null}
