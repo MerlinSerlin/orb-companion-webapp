@@ -32,8 +32,7 @@ export function PlanSelectionDialog({
   const { 
     customer,
     setSubscription,
-    pendingPlanId,
-    setPendingPlanId
+    pendingPlanId
   } = useCustomerStore()
 
   const [isSubmitting, setIsSubmitting] = useState(false)

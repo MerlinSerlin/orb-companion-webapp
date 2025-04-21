@@ -32,8 +32,7 @@ export function CustomerRegistrationDialog({
 }: CustomerRegistrationDialogProps) {
   const { 
     setCustomer,
-    pendingPlanId,
-    setPendingPlanId
+    pendingPlanId
   } = useCustomerStore()
 
   const [formData, setFormData] = useState({
