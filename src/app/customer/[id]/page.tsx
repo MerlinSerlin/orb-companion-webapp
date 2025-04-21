@@ -14,11 +14,12 @@ function DashboardLoadingSkeleton() {
 }
 
 // Define the expected shape of the params object
-interface CustomerDashboardPageParams {
-  id: string;
-}
+// interface CustomerDashboardPageParams {
+//   id: string;
+// }
 
-export default async function CustomerDashboardPage({ params }: { params: CustomerDashboardPageParams /* Use defined type */ }) {
+// Reverted prop type to simpler form expected by Next.js for dynamic routes
+export default async function CustomerDashboardPage({ params }: { params: { id: string } }) {
 
   // Await params before accessing properties for future compatibility
   // Although params might not be a true Promise in this page context currently,
