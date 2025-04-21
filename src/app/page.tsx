@@ -109,7 +109,6 @@ export default function Home() {
         isOpen={isRegistrationOpen}
         onClose={closeRegistration}
         registrationSuccessCallback={registrationSuccessCallback}
-        pendingPlanId={pendingPlanId}
       />
       <PlanSelectionDialog 
         isOpen={isPlanSelectionOpen}
