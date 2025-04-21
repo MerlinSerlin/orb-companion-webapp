@@ -4,9 +4,6 @@ import { CustomerDashboardContent } from "@/components/customer/dashboard-conten
 import { getCustomerSubscriptions } from "@/app/actions"
 import type { Subscription } from "@/lib/types"
 
-// Removed named re-export of the client component
-// export { CustomerDashboardContent }; 
-
 // Define a simple loading skeleton component
 function DashboardLoadingSkeleton() {
   // Using a simple text loader for now, could be enhanced with Skeleton components
@@ -18,8 +15,12 @@ function DashboardLoadingSkeleton() {
 //   id: string;
 // }
 
-// Reverted prop type to simpler form expected by Next.js for dynamic routes
-export default async function CustomerDashboardPage({ params }: { params: { id: string } }) {
+// Explicitly type params as a Promise in the function signature
+export default async function CustomerDashboardPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
 
   // Await params before accessing properties for future compatibility
   // Although params might not be a true Promise in this page context currently,
