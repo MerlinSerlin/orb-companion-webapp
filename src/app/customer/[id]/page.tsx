@@ -10,11 +10,6 @@ function DashboardLoadingSkeleton() {
   return <div className="p-8 text-center">Loading dashboard...</div>;
 }
 
-// Define the expected shape of the params object
-// interface CustomerDashboardPageParams {
-//   id: string;
-// }
-
 // Explicitly type params as a Promise in the function signature
 export default async function CustomerDashboardPage({ 
   params 

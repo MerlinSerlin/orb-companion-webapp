@@ -22,7 +22,7 @@ interface EnterpriseContactDialogProps {
 }
 
 export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContactDialogProps) {
-  const { customer, setSubscription } = useCustomerStore()
+  const { customer, addSubscription } = useCustomerStore()
   const [formData, setFormData] = useState({
     bandwidth: "",
     edgeRequests: "",
@@ -67,22 +67,23 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
     setIsSubmitting(true)
     
     try {
-      // Create a subscription for the enterprise plan if the customer is logged in
+      // Mock: Add a pending enterprise subscription if the customer is logged in
       if (customer) {
         const enterpriseSubscription = {
           id: `sub_${Math.random().toString(36).substr(2, 9)}`, // Mock ID for now
-          plan_id: "plan_enterprise",
-          status: 'pending' as const, // Enterprise plans typically start as pending until approved
+          plan_id: "nimbus_scale_enterprise", // Use the correct enterprise plan ID
+          status: 'pending' as const, 
         }
         
-        setSubscription(enterpriseSubscription)
+        addSubscription(enterpriseSubscription) // Changed from setSubscription
         
         toast.success("Enterprise plan request submitted!", {
           description: "Our team will contact you soon with a custom quote based on your requirements.",
           duration: 5000,
         })
       } else {
-        toast.success("Request submitted successfully!")
+        // If not logged in, just show success, don't add to store
+        toast.success("Request submitted successfully! Our team will be in touch.")
       }
       
       // Close the dialog - the form will be reset by the useEffect
