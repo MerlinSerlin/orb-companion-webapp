@@ -22,17 +22,19 @@ interface CustomerRegistrationDialogProps {
   isOpen: boolean
   onClose: () => void
   registrationSuccessCallback: (() => void) | null
+  pendingPlanId: string | null
 }
 
 export function CustomerRegistrationDialog({ 
   onOpenPlanSelection,
   isOpen,
   onClose,
-  registrationSuccessCallback
+  registrationSuccessCallback,
+  pendingPlanId
 }: CustomerRegistrationDialogProps) {
   const { 
     setCustomer,
-    pendingPlanId
+    pendingPlanId: storePendingPlanId
   } = useCustomerStore()
 
   const [formData, setFormData] = useState({
@@ -44,7 +46,7 @@ export function CustomerRegistrationDialog({
   // When the dialog is opened, log the pendingPlanId
   useEffect(() => {
     // Log removed, but keeping effect for future potential needs
-  }, [isOpen, pendingPlanId]);
+  }, [isOpen, storePendingPlanId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -66,7 +68,7 @@ export function CustomerRegistrationDialog({
 
     try {
       // Store pendingPlanId in a local variable to preserve it
-      const selectedPlanId = pendingPlanId;
+      const selectedPlanId = pendingPlanId || storePendingPlanId;
       
       // Create customer
       const customerResult = await createCustomer(formData.name, formData.email)
