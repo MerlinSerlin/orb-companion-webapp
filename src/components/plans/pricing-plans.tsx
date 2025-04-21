@@ -7,18 +7,16 @@ import { useCustomerStore } from "@/lib/store/customer-store"
 import { EnterpriseContactDialog } from "../dialogs/enterprise-contact-dialog"
 
 interface PricingPlansProps {
-  pendingPlanId?: string | null
-  onPendingPlanIdChange?: (planId: string | null) => void
   openRegistration: (callback?: () => void) => void
 }
 
 export function PricingPlans({ 
-  pendingPlanId, 
-  onPendingPlanIdChange,
   openRegistration 
 }: PricingPlansProps) {
   const { 
-    customer
+    customer,
+    pendingPlanId,
+    setPendingPlanId
   } = useCustomerStore()
 
   const [isEnterpriseDialogOpen, setIsEnterpriseDialogOpen] = useState(false)
@@ -38,9 +36,9 @@ export function PricingPlans({
     setIsEnterpriseDialogOpen(isOpen);
     
     // When dialog closes, clear the enterprise plan from pendingPlanId
-    if (!isOpen && pendingPlanId === "plan_enterprise" && onPendingPlanIdChange) {
+    if (!isOpen && pendingPlanId === "plan_enterprise") {
       // Reset pendingPlanId to prevent dialog from reopening
-      onPendingPlanIdChange(null);
+      setPendingPlanId(null);
     }
   }
 
@@ -51,10 +49,8 @@ export function PricingPlans({
       return;
     }
     
-    // Update the parent component with the selected plan ID
-    if (onPendingPlanIdChange) {
-      onPendingPlanIdChange(planId);
-    }
+    // Update the store with the selected plan ID
+    setPendingPlanId(planId);
 
     if (!customer) {
       // If user is not logged in, redirect to registration

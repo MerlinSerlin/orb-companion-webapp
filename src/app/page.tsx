@@ -8,8 +8,7 @@ import { PlanSelectionDialog } from "@/components/dialogs/plan-selection-dialog"
 import { useCustomerStore } from "@/lib/store/customer-store"
 
 export default function Home() {
-  const { customer } = useCustomerStore()
-  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
+  const { customer, pendingPlanId, setPendingPlanId } = useCustomerStore()
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   const [isPlanSelectionOpen, setIsPlanSelectionOpen] = useState(false)
   const [registrationSuccessCallback, setRegistrationSuccessCallback] = useState<(() => void) | null>(null)
@@ -28,7 +27,7 @@ export default function Home() {
     }
   }, [customer, pendingPlanId, registrationWasSuccessful]);
 
-  // We need to debug pendingPlanId problems
+  // Handle edge case where plan selection dialog is open but no plan is selected
   useEffect(() => {
     if (isPlanSelectionOpen && !pendingPlanId) {
       // Immediately close the dialog since we don't have a valid plan
@@ -72,7 +71,7 @@ export default function Home() {
     // Close the registration dialog if it's open
     setIsRegistrationOpen(false);
     
-    // Open the dialog immediately - no need for setTimeout
+    // Open the dialog immediately
     setIsPlanSelectionOpen(true);
   }
   
@@ -103,21 +102,16 @@ export default function Home() {
     <>
       <Header />
       <main>
-        <PricingPlans 
-          pendingPlanId={pendingPlanId}
-          onPendingPlanIdChange={setPendingPlanId}
-          openRegistration={openRegistration}
-        />
+        <PricingPlans openRegistration={openRegistration} />
       </main>
       <CustomerRegistrationDialog 
-        pendingPlanId={pendingPlanId} 
         onOpenPlanSelection={openPlanSelection} 
         isOpen={isRegistrationOpen}
         onClose={closeRegistration}
         registrationSuccessCallback={registrationSuccessCallback}
+        pendingPlanId={pendingPlanId}
       />
       <PlanSelectionDialog 
-        pendingPlanId={pendingPlanId}
         isOpen={isPlanSelectionOpen}
         onClose={closePlanSelection}
         onSubscriptionSuccess={handleSuccessfulSubscription}

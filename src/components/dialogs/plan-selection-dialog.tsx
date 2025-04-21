@@ -17,7 +17,6 @@ import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 import { PLAN_DETAILS } from "../plans/plan-data"
 
 interface PlanSelectionDialogProps {
-  pendingPlanId: string | null
   onPlanSelected?: () => void
   isOpen: boolean
   onClose: () => void
@@ -25,7 +24,6 @@ interface PlanSelectionDialogProps {
 }
 
 export function PlanSelectionDialog({ 
-  pendingPlanId, 
   onPlanSelected,
   isOpen,
   onClose,
@@ -33,7 +31,8 @@ export function PlanSelectionDialog({
 }: PlanSelectionDialogProps) {
   const { 
     customer,
-    setSubscription
+    setSubscription,
+    pendingPlanId
   } = useCustomerStore()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
