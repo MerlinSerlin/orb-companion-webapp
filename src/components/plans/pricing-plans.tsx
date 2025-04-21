@@ -23,7 +23,7 @@ export function PricingPlans({
   
   // Check if we need to show enterprise dialog after login
   useEffect(() => {
-    if (customer && pendingPlanId === "plan_enterprise") {
+    if (customer && pendingPlanId === "nimbus_scale_enterprise") {
       // Show the enterprise dialog with a small delay to allow any other dialogs to close first
       setTimeout(() => {
         setIsEnterpriseDialogOpen(true)
@@ -36,7 +36,7 @@ export function PricingPlans({
     setIsEnterpriseDialogOpen(isOpen);
     
     // When dialog closes, clear the enterprise plan from pendingPlanId
-    if (!isOpen && pendingPlanId === "plan_enterprise") {
+    if (!isOpen && pendingPlanId === "nimbus_scale_enterprise") {
       // Reset pendingPlanId to prevent dialog from reopening
       setPendingPlanId(null);
     }
@@ -55,7 +55,7 @@ export function PricingPlans({
     if (!customer) {
       // If user is not logged in, redirect to registration
       openRegistration();
-    } else if (planId === "plan_enterprise") {
+    } else if (planId === "nimbus_scale_enterprise") {
       // For enterprise plan, show the enterprise dialog
       setIsEnterpriseDialogOpen(true);
     }
@@ -103,7 +103,7 @@ export function PricingPlans({
         <div className="inline-flex items-center justify-center gap-2 rounded-full border bg-background px-4 py-1.5 text-sm text-muted-foreground">
           <span>Need a custom plan?</span>
           <button 
-            onClick={() => handlePlanSelection("plan_enterprise")}
+            onClick={() => handlePlanSelection("nimbus_scale_enterprise")}
             className="text-primary font-medium hover:underline"
           >
             Contact our sales team →
