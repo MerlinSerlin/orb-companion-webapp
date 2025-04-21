@@ -54,7 +54,7 @@ export function Header() {
       <CustomerRegistrationDialog 
         isOpen={isRegistrationOpen}
         onClose={() => setIsRegistrationOpen(false)}
-        registrationSuccessCallback={null}
+        onRegistrationSuccess={() => {}}
       />
     </header>
   )

@@ -11,90 +11,76 @@ export default function Home() {
   const { customer, pendingPlanId, setPendingPlanId } = useCustomerStore()
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   const [isPlanSelectionOpen, setIsPlanSelectionOpen] = useState(false)
-  const [registrationSuccessCallback, setRegistrationSuccessCallback] = useState<(() => void) | null>(null)
   const [registrationWasSuccessful, setRegistrationWasSuccessful] = useState(false)
 
   // Effect to properly manage dialog opening states
   useEffect(() => {
-    // If we have a pendingPlanId that's not enterprise, and either:
-    // 1. The user is logged in, OR
-    // 2. The registration was just successful (user just registered)
-    // Then open the plan selection dialog
-    if (pendingPlanId && pendingPlanId !== "plan_enterprise" && 
+    if (pendingPlanId && pendingPlanId !== "nimbus_scale_enterprise" && 
         (customer || registrationWasSuccessful)) {
       setIsRegistrationOpen(false);
       setIsPlanSelectionOpen(true);
     }
+    // Note: Enterprise dialog opening is handled within PricingPlans component
   }, [customer, pendingPlanId, registrationWasSuccessful]);
 
   // Handle edge case where plan selection dialog is open but no plan is selected
   useEffect(() => {
     if (isPlanSelectionOpen && !pendingPlanId) {
-      // Immediately close the dialog since we don't have a valid plan
       setIsPlanSelectionOpen(false);
     }
   }, [isPlanSelectionOpen, pendingPlanId]);
 
-  // Dialog control functions
-  const openRegistration = (callback?: () => void) => {
-    // Close any other open dialogs
+  // --- Dialog Control --- 
+
+  const openRegistration = () => {
     setIsPlanSelectionOpen(false);
-    
-    // Open registration
+    setRegistrationWasSuccessful(false); // Reset flag when opening registration
     setIsRegistrationOpen(true)
-    if (callback) setRegistrationSuccessCallback(callback)
   }
   
   const closeRegistration = () => {
-    // Only clear the pending plan ID when registration is cancelled by the user,
-    // NOT when it's closed after successful registration (which uses onClose directly)
-    // We'll set a flag in openPlanSelection to handle the transition properly
+    // Only clear the pending plan ID if registration was NOT successful
     if (pendingPlanId && !registrationWasSuccessful) {
+      console.log('Registration closed/cancelled, clearing pending plan ID:', pendingPlanId);
       setPendingPlanId(null)
     }
     
-    setRegistrationWasSuccessful(false); // Reset for next time
     setIsRegistrationOpen(false)
-    setRegistrationSuccessCallback(null)
+    // Reset flag *after* check, ready for next open
+    setRegistrationWasSuccessful(false); 
+  }
+
+  // Handler to be called on successful registration
+  const handleRegistrationSuccess = () => {
+    console.log('Registration successful, setting flag.');
+    setRegistrationWasSuccessful(true);
   }
 
   // Create a function to force a specific plan ID when opening the plan selection dialog
   const forcePlanSelection = (planId: string | null) => {
-    // Make sure we have a valid plan ID
-    if (!planId) {
-      return;
-    }
-    
-    // Set the pending plan ID
+    if (!planId) return;
     setPendingPlanId(planId);
-    
-    // Close the registration dialog if it's open
     setIsRegistrationOpen(false);
-    
-    // Open the dialog immediately
     setIsPlanSelectionOpen(true);
   }
   
+  // This function is triggered *after* registration was successful (for non-enterprise)
+  // It now mainly just calls forcePlanSelection if needed
   const openPlanSelection = () => {
-    // Mark registration as successful to prevent clearing pendingPlanId
-    setRegistrationWasSuccessful(true);
-    
-    // Only open if we have a valid plan ID and it's not the enterprise plan
-    if (pendingPlanId && pendingPlanId !== "plan_enterprise") {
-      // Force the plan selection with the current pendingPlanId
+    // Flag is already set by handleRegistrationSuccess
+    if (pendingPlanId && pendingPlanId !== "nimbus_scale_enterprise") {
       forcePlanSelection(pendingPlanId);
     }
+    // If it *is* enterprise, do nothing here; PricingPlans effect handles it
   }
 
   const closePlanSelection = () => {
-    // Don't clear the pending plan ID when plan selection is closed manually
-    // We only clear it when a subscription is completed, which is handled elsewhere
     setIsPlanSelectionOpen(false)
   }
 
-  // Function to handle successful subscription 
+  // Function to handle successful subscription (from PlanSelectionDialog)
   const handleSuccessfulSubscription = () => {
-    setPendingPlanId(null);
+    // pendingPlanId is already cleared by addSubscription in the store
     closePlanSelection();
   }
 
@@ -105,10 +91,10 @@ export default function Home() {
         <PricingPlans openRegistration={openRegistration} />
       </main>
       <CustomerRegistrationDialog 
-        onOpenPlanSelection={openPlanSelection} 
+        onOpenPlanSelection={openPlanSelection} // Still needed for non-enterprise flow
+        onRegistrationSuccess={handleRegistrationSuccess} // Pass the success handler
         isOpen={isRegistrationOpen}
         onClose={closeRegistration}
-        registrationSuccessCallback={registrationSuccessCallback}
       />
       <PlanSelectionDialog 
         isOpen={isPlanSelectionOpen}
