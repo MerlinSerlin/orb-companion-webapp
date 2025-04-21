@@ -4,8 +4,8 @@ import { CustomerDashboardContent } from "@/components/customer/dashboard-conten
 import { getCustomerSubscriptions } from "@/app/actions"
 import type { Subscription } from "@/lib/types"
 
-// Re-exporting the component for clarity and potential future needs
-export { CustomerDashboardContent };
+// Removed named re-export of the client component
+// export { CustomerDashboardContent }; 
 
 // Define a simple loading skeleton component
 function DashboardLoadingSkeleton() {
