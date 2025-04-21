@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { useCustomerStore } from "@/lib/store/customer-store"
@@ -8,6 +9,7 @@ import { SignUpButton } from "./sign-up-button"
 import { CustomerRegistrationDialog } from "@/components/dialogs/customer-registration-dialog"
 
 export function Header() {
+  const router = useRouter()
   const { 
     customer,
     reset 
@@ -17,6 +19,12 @@ export function Header() {
 
   const handleLogout = () => {
     reset() // This will clear all state including customer and subscription
+  }
+
+  const goToDashboard = () => {
+    if (customer) {
+      router.push(`/customer/${customer.id}`)
+    }
   }
 
   return (
@@ -29,12 +37,17 @@ export function Header() {
               <span className="text-sm text-muted-foreground">
                 Welcome, {customer.name}
               </span>
+              <Button variant="secondary" onClick={goToDashboard}>
+                Dashboard
+              </Button>
               <Button variant="outline" onClick={handleLogout}>
                 Logout
               </Button>
             </>
           )}
-          <SignUpButton onClick={() => setIsRegistrationOpen(true)} />
+          {!customer && (
+            <SignUpButton onClick={() => setIsRegistrationOpen(true)} />
+          )}
         </div>
       </div>
       

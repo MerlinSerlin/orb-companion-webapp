@@ -1,7 +1,7 @@
 // Plan details for UI display
 export const PLAN_DETAILS = [
   {
-    id: "plan_starter",
+    plan_id: "C5xgi5R8yRZcSr6i",
     name: "Starter",
     description: "For small projects and personal websites",
     price: "$29",
@@ -16,7 +16,7 @@ export const PLAN_DETAILS = [
     popular: false,
   },
   {
-    id: "plan_pro",
+    plan_id: "APtDhzaThwbpmZ8K",
     name: "Pro",
     description: "For growing businesses and high-traffic sites",
     price: "$99",
@@ -31,7 +31,7 @@ export const PLAN_DETAILS = [
     popular: true,
   },
   {
-    id: "plan_enterprise",
+    plan_id: "nimbus_scale_enterprise",
     name: "Enterprise",
     description: "For large-scale applications with high demands",
     price: "",

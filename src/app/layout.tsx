@@ -1,23 +1,31 @@
-import type React from "react"
-import { Toaster } from "sonner"
-import "@/app/globals.css"
-import { QueryProvider } from "@/lib/query/query-provider"
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/components/providers/query-provider";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Orb Companion App",
+  description: "An example application integrating with Orb",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en">
-      <QueryProvider>
-        <body>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <QueryProvider>
           {children}
-          <Toaster />
-        </body>
-      </QueryProvider>
+          <Toaster richColors position="top-right" />
+        </QueryProvider>
+      </body>
     </html>
-  )
+  );
 }
 
 

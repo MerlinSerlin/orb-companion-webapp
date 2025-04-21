@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCustomerStore } from "@/lib/store/customer-store"
+import { createSubscription } from "@/app/actions"
 import {
   Dialog,
   DialogContent,
@@ -29,9 +31,10 @@ export function PlanSelectionDialog({
   onClose,
   onSubscriptionSuccess
 }: PlanSelectionDialogProps) {
+  const router = useRouter()
   const { 
     customer,
-    setSubscription,
+    addSubscription,
     pendingPlanId
   } = useCustomerStore()
 
@@ -40,7 +43,7 @@ export function PlanSelectionDialog({
 
   // Set the selected plan when pendingPlanId changes
   useEffect(() => {
-    setSelectedPlan(pendingPlanId ? PLAN_DETAILS.find(plan => plan.id === pendingPlanId) || null : null);
+    setSelectedPlan(pendingPlanId ? PLAN_DETAILS.find(plan => plan.plan_id === pendingPlanId) || null : null);
   }, [pendingPlanId]);
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -51,18 +54,16 @@ export function PlanSelectionDialog({
     setIsSubmitting(true)
 
     try {
-      // Create a new subscription object
-      const newSubscription = {
-        id: `sub_${Math.random().toString(36).substr(2, 9)}`, // Mock ID for now
-        plan_id: pendingPlanId,
-        status: 'active' as const,
+      // Call the server action to create a subscription in Orb
+      const result = await createSubscription(customer.id, pendingPlanId)
+      
+      if (!result.success || !result.subscription) {
+        throw new Error(result.error || "Failed to create subscription")
       }
       
-      // Update the customer's subscription in the store
-      setSubscription(newSubscription)
+      // Add the subscription to the customer in the store
+      addSubscription(result.subscription)
 
-      // TODO: Implement actual subscription creation with Orb API when ready
-      
       toast.success("Successfully subscribed!", {
         description: `You're all set to start using our service with the ${selectedPlan.name} plan.`,
         duration: 5000,
@@ -80,6 +81,11 @@ export function PlanSelectionDialog({
 
       // Close the dialog
       onClose()
+      
+      // Redirect to the customer dashboard
+      setTimeout(() => {
+        router.push(`/customer/${customer.id}`)
+      }, 500)
     } catch (error) {
       toast.error("Error creating subscription", {
         description: error instanceof Error ? error.message : "An unknown error occurred",

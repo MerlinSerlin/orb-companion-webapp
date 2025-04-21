@@ -64,8 +64,10 @@ export function PricingPlans({
 
   // Check if customer is already subscribed to this plan
   const isSubscribedToPlan = (planId: string) => {
-    return customer?.subscription?.plan_id === planId &&
-           customer?.subscription?.status === 'active';
+    if (!customer || !customer.subscriptions) return false;
+    return customer.subscriptions.some(
+      sub => sub.plan_id === planId && sub.status === 'active'
+    );
   }
 
   return (
@@ -77,18 +79,18 @@ export function PricingPlans({
 
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto relative">
           {PLAN_DETAILS.map((plan) => {
-            const isCurrentPlan = isSubscribedToPlan(plan.id);
+            const isCurrentPlan = isSubscribedToPlan(plan.plan_id);
             
             return (
               <PlanCard
-                key={plan.id}
+                key={plan.plan_id}
                 name={plan.name}
                 description={plan.description}
                 price={plan.price}
                 features={plan.features}
                 cta={isCurrentPlan ? "Current Plan" : plan.cta}
                 popular={plan.popular}
-                onSelect={() => handlePlanSelection(plan.id)}
+                onSelect={() => handlePlanSelection(plan.plan_id)}
                 disabled={isCurrentPlan}
                 isCurrentPlan={isCurrentPlan}
               />

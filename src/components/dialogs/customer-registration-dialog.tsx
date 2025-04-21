@@ -80,7 +80,7 @@ export function CustomerRegistrationDialog({
         id: customerResult.customerId,
         name: formData.name,
         email: formData.email,
-        subscription: null
+        subscriptions: []
       }
       setCustomer(newCustomer)
 
