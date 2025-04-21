@@ -19,13 +19,16 @@ type PersistedState = {
 }
 
 interface CustomerState extends PersistedState {
+  pendingPlanId: string | null
   setCustomer: (customer: Customer | null) => void
   setSubscription: (subscription: Subscription | null) => void
+  setPendingPlanId: (planId: string | null) => void
   reset: () => void
 }
 
 const initialState = {
   customer: null,
+  pendingPlanId: null,
 }
 
 // Mock storage for SSR
@@ -51,6 +54,7 @@ export const useCustomerStore = create<CustomerState>()(
           });
         }
       },
+      setPendingPlanId: (planId) => set({ pendingPlanId: planId }),
       reset: () => set(initialState),
     }),
     {

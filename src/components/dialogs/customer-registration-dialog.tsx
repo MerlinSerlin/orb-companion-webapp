@@ -18,7 +18,6 @@ import { FormField } from "@/components/ui/form-field"
 import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 
 interface CustomerRegistrationDialogProps {
-  pendingPlanId: string | null
   onOpenPlanSelection?: () => void
   isOpen: boolean
   onClose: () => void
@@ -26,14 +25,15 @@ interface CustomerRegistrationDialogProps {
 }
 
 export function CustomerRegistrationDialog({ 
-  pendingPlanId, 
   onOpenPlanSelection,
   isOpen,
   onClose,
   registrationSuccessCallback
 }: CustomerRegistrationDialogProps) {
   const { 
-    setCustomer
+    setCustomer,
+    pendingPlanId,
+    setPendingPlanId
   } = useCustomerStore()
 
   const [formData, setFormData] = useState({
