@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 import { CheckCircle2, Loader2 } from "lucide-react"
 import { createCustomer } from "@/app/actions"
