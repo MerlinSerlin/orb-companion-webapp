@@ -123,6 +123,7 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
+            {/* REMOVED Back to Home Button
             <Button 
               variant="outline" 
               size="sm" 
@@ -132,6 +133,7 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Home
             </Button>
+            */}
             <h1 className="text-3xl font-bold tracking-tight">Subscription Dashboard</h1>
             {/* Displaying Customer ID as name might not be available without Zustand state */}
             <p className="text-muted-foreground">
