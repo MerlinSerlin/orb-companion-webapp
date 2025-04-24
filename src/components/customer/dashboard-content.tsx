@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 // import { Skeleton } from "@/components/ui/skeleton"; // Removed unused import
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, InfoIcon, CheckCircle2 } from "lucide-react" // Removed unused AlertTriangle
+import { InfoIcon, CheckCircle2 } from "lucide-react"
 import type { Subscription } from "@/lib/types"; // Import renamed Subscription
 
 // Exporting the type for use in the server component page
