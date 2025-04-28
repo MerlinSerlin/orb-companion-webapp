@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
-import { useCustomerStore } from "@/lib/store/customer-store"
 import {
   Dialog,
   DialogContent,
@@ -22,7 +21,6 @@ interface EnterpriseContactDialogProps {
 }
 
 export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContactDialogProps) {
-  const { customer, addSubscription } = useCustomerStore()
   const [formData, setFormData] = useState({
     bandwidth: "",
     edgeRequests: "",
@@ -67,24 +65,11 @@ export function EnterpriseContactDialog({ open, onOpenChange }: EnterpriseContac
     setIsSubmitting(true)
     
     try {
-      // Mock: Add a pending enterprise subscription if the customer is logged in
-      if (customer) {
-        const enterpriseSubscription = {
-          id: `sub_${Math.random().toString(36).substr(2, 9)}`, // Mock ID for now
-          plan_id: "nimbus_scale_enterprise", // Use the correct enterprise plan ID
-          status: 'pending' as const, 
-        }
-        
-        addSubscription(enterpriseSubscription) // Changed from setSubscription
-        
-        toast.success("Enterprise plan request submitted!", {
-          description: "Our team will contact you soon with a custom quote based on your requirements.",
-          duration: 5000,
-        })
-      } else {
-        // If not logged in, just show success, don't add to store
-        toast.success("Request submitted successfully! Our team will be in touch.")
-      }
+      // SIMPLIFIED: Just show success toast regardless of login state for now
+      toast.success("Request submitted successfully!", {
+        description: "Our team will contact you soon with a custom quote.",
+        duration: 5000,
+      })
       
       // Close the dialog - the form will be reset by the useEffect
       onOpenChange(false);

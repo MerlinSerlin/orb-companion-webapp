@@ -4,15 +4,15 @@
  */
 export interface Subscription {
   id: string;
+  name?: string | null;
   plan_id: string;
+  planName?: string | null;
+  currency?: string | null;
   status: 'active' | 'canceled' | 'ended' | 'pending' | 'upcoming';
   start_date?: string | null;
   end_date?: string | null;
   current_period_start?: string | null;
   current_period_end?: string | null;
-  // Add other relevant fields from the Orb API subscriptions object as needed
-  // e.g., customer?: { id: string; name?: string; email?: string };
-  // e.g., plan?: { id: string; name?: string };
 }
 
 /**
@@ -20,6 +20,7 @@ export interface Subscription {
  */
 export interface Customer {
   id: string;
+  external_customer_id?: string | null;
   name: string;
   email: string;
   subscriptions: Subscription[]; // Use renamed Subscription
@@ -52,6 +53,28 @@ export interface CustomerState extends PersistedState {
  */
 export interface GetSubscriptionsResult {
   success: boolean;
+  externalCustomerId?: string | null;
   subscriptions?: Subscription[] | null; // Use renamed Subscription
+  error?: string | null;
+}
+
+/**
+ * Represents the core customer details fetched from the backend.
+ */
+export interface CustomerDetails {
+  id: string;
+  external_customer_id: string | null;
+  name: string;
+  email: string;
+  // Add other fields if needed later, e.g., currency, timezone
+}
+
+/**
+ * Represents the structure of the response from our
+ * `getCustomerDetails` server action.
+ */
+export interface GetCustomerDetailsResult {
+  success: boolean;
+  customer?: CustomerDetails | null; 
   error?: string | null;
 } 

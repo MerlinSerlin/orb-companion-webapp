@@ -4,7 +4,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { CheckCircle2, Loader2 } from "lucide-react"
 import { createCustomer } from "@/app/actions"
-import { useCustomerStore } from "@/lib/store/customer-store" 
+import { useUiStore, type UiState } from "@/lib/store/ui-store" 
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 
 interface CustomerRegistrationDialogProps {
   onOpenPlanSelection?: () => void
-  onRegistrationSuccess: () => void
+  onRegistrationSuccess: (customerId: string) => void
   isOpen: boolean
   onClose: () => void
 }
@@ -30,10 +30,7 @@ export function CustomerRegistrationDialog({
   isOpen,
   onClose,
 }: CustomerRegistrationDialogProps) {
-  const { 
-    setCustomer,
-    pendingPlanId
-  } = useCustomerStore()
+  const pendingPlanId = useUiStore((state: UiState) => state.pendingPlanId);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -68,21 +65,13 @@ export function CustomerRegistrationDialog({
         throw new Error(customerResult.error || "Failed to create customer or missing ID")
       }
 
-      const newCustomer = {
-        id: customerResult.customerId,
-        name: formData.name,
-        email: formData.email,
-        subscriptions: []
-      }
-      setCustomer(newCustomer)
-
       toast.success("Account created successfully!", {
         description: `Welcome to NimbusScale, ${formData.name}! You can now select a plan.`,
         icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
         duration: 5000,
       })
 
-      onRegistrationSuccess();
+      onRegistrationSuccess(customerResult.customerId);
 
       setFormData({ name: "", email: "" });
 

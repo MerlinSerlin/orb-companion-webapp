@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useCustomerStore } from "@/lib/store/customer-store"
+import { useUiStore, type UiState } from "@/lib/store/ui-store"
 import { createSubscription } from "@/app/actions"
 import {
   Dialog,
@@ -19,6 +19,7 @@ import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 import { PLAN_DETAILS } from "../plans/plan-data"
 
 interface PlanSelectionDialogProps {
+  customerId: string
   onPlanSelected?: () => void
   isOpen: boolean
   onClose: () => void
@@ -26,65 +27,53 @@ interface PlanSelectionDialogProps {
 }
 
 export function PlanSelectionDialog({ 
+  customerId,
   onPlanSelected,
   isOpen,
   onClose,
   onSubscriptionSuccess
 }: PlanSelectionDialogProps) {
   const router = useRouter()
-  const { 
-    customer,
-    addSubscription,
-    pendingPlanId
-  } = useCustomerStore()
+  const pendingPlanId = useUiStore((state: UiState) => state.pendingPlanId)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<typeof PLAN_DETAILS[0] | null>(null)
 
-  // Set the selected plan when pendingPlanId changes
   useEffect(() => {
-    setSelectedPlan(pendingPlanId ? PLAN_DETAILS.find(plan => plan.plan_id === pendingPlanId) || null : null);
-  }, [pendingPlanId]);
+    setSelectedPlan(pendingPlanId ? PLAN_DETAILS.find(plan => plan.plan_id === pendingPlanId) || null : null)
+  }, [pendingPlanId])
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!pendingPlanId || !customer || !selectedPlan) return
+    if (!pendingPlanId || !customerId || !selectedPlan) return
 
     setIsSubmitting(true)
 
     try {
-      // Call the server action to create a subscription in Orb
-      const result = await createSubscription(customer.id, pendingPlanId)
+      const result = await createSubscription(customerId, pendingPlanId)
       
       if (!result.success || !result.subscription) {
         throw new Error(result.error || "Failed to create subscription")
       }
       
-      // Add the subscription to the customer in the store
-      addSubscription(result.subscription)
-
       toast.success("Successfully subscribed!", {
         description: `You're all set to start using our service with the ${selectedPlan.name} plan.`,
         duration: 5000,
       })
 
-      // Call the callbacks if provided
       if (onPlanSelected) {
         onPlanSelected()
       }
       
-      // Notify parent of subscription success
       if (onSubscriptionSuccess) {
         onSubscriptionSuccess()
       }
 
-      // Close the dialog
       onClose()
       
-      // Redirect to the customer dashboard
       setTimeout(() => {
-        router.push(`/customer/${customer.id}`)
+        router.push(`/customer/${customerId}`)
       }, 500)
     } catch (error) {
       toast.error("Error creating subscription", {
@@ -96,25 +85,14 @@ export function PlanSelectionDialog({
     }
   }
 
-  // Prepare API schema data based on Orb API for creating a subscription
   const apiRequestBody = {
-    customer_id: customer?.id || "cust_12345abcdef",
+    customer_id: customerId || "cust_12345abcdef",
     plan_id: pendingPlanId || "plan_basic",
-    auto_collection: true,
-    net_terms: 0,
-    // Optional fields:
-    // billing_cycle_day: 1,
-    // coupon_redemption_code: "DISCOUNT50",
-    // default_invoice_memo: "Thanks for subscribing!",
-    // invoicing_threshold: 0,
-    // metadata: { "signup_source": "website" },
-    // minimum_commitment: { amount: "1000", currency: "USD" },
-    // price_overrides: [],
   }
 
   const sampleResponse = {
     id: "sub_12345abcdef",
-    customer_id: customer?.id || "cust_12345abcdef",
+    customer_id: customerId || "cust_12345abcdef",
     plan_id: pendingPlanId || "plan_basic",
     status: "active",
     created_at: new Date().toISOString(),
@@ -128,8 +106,7 @@ export function PlanSelectionDialog({
       open={isOpen} 
       onOpenChange={(open) => {
         if (!open) {
-          // When dialog is closed without subscribing, call onClose
-          onClose();
+          onClose()
         }
       }}
     >
@@ -182,7 +159,7 @@ export function PlanSelectionDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !customer || !selectedPlan}>
+            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !customerId || !selectedPlan}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

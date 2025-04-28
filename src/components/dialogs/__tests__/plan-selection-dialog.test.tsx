@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PlanSelectionDialog } from '../plan-selection-dialog';
-import { useCustomerStore } from '@/lib/store/customer-store';
+import { useCustomerStore } from '@/lib/store/ui-store';
 import { createSubscription } from '@/app/actions';
 
 // Mock the store

@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PricingPlans } from '../pricing-plans';
-import { useCustomerStore } from '@/lib/store/customer-store';
+import { useCustomerStore } from '@/lib/store/ui-store';
 
 // Mock the store
 jest.mock('@/lib/store/customer-store', () => ({

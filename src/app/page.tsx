@@ -5,23 +5,27 @@ import { Header } from "@/components/ui/header"
 import { PricingPlans } from "@/components/plans/pricing-plans"
 import { CustomerRegistrationDialog } from "@/components/dialogs/customer-registration-dialog"
 import { PlanSelectionDialog } from "@/components/dialogs/plan-selection-dialog"
-import { useCustomerStore } from "@/lib/store/customer-store"
+import { useUiStore, type UiState } from "@/lib/store/ui-store"
 
 export default function Home() {
-  const { customer, pendingPlanId, setPendingPlanId } = useCustomerStore()
+  // Select individual state pieces to avoid creating new objects
+  const pendingPlanId = useUiStore((state: UiState) => state.pendingPlanId);
+  const setPendingPlanId = useUiStore((state: UiState) => state.setPendingPlanId);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   const [isPlanSelectionOpen, setIsPlanSelectionOpen] = useState(false)
   const [registrationWasSuccessful, setRegistrationWasSuccessful] = useState(false)
+  // Add state to hold the newly created customer ID
+  const [newlyCreatedCustomerId, setNewlyCreatedCustomerId] = useState<string | null>(null);
 
   // Effect to properly manage dialog opening states
   useEffect(() => {
     if (pendingPlanId && pendingPlanId !== "nimbus_scale_enterprise" && 
-        (customer || registrationWasSuccessful)) {
+        registrationWasSuccessful) {
       setIsRegistrationOpen(false);
       setIsPlanSelectionOpen(true);
     }
     // Note: Enterprise dialog opening is handled within PricingPlans component
-  }, [customer, pendingPlanId, registrationWasSuccessful]);
+  }, [pendingPlanId, registrationWasSuccessful]);
 
   // Handle edge case where plan selection dialog is open but no plan is selected
   useEffect(() => {
@@ -51,8 +55,9 @@ export default function Home() {
   }
 
   // Handler to be called on successful registration
-  const handleRegistrationSuccess = () => {
-    console.log('Registration successful, setting flag.');
+  const handleRegistrationSuccess = (createdCustomerId: string) => {
+    console.log('Registration successful, setting flag and customer ID.');
+    setNewlyCreatedCustomerId(createdCustomerId); // Store the ID
     setRegistrationWasSuccessful(true);
   }
 
@@ -97,6 +102,7 @@ export default function Home() {
         onClose={closeRegistration}
       />
       <PlanSelectionDialog 
+        customerId={newlyCreatedCustomerId || ""} // Pass the stored ID
         isOpen={isPlanSelectionOpen}
         onClose={closePlanSelection}
         onSubscriptionSuccess={handleSuccessfulSubscription}
