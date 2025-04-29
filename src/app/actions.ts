@@ -6,7 +6,6 @@ import type {
   Subscription, 
   GetCustomerDetailsResult, 
 } from "@/lib/types";
-import type { CustomerDetails } from "@/lib/types";
 
 export async function createCustomer(name: string, email: string) {
   try {

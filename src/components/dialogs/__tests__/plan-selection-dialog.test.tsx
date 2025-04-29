@@ -3,11 +3,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PlanSelectionDialog } from '../plan-selection-dialog';
 import { createSubscription } from '@/app/actions';
 import { PLAN_DETAILS } from '@/components/plans/plan-data';
+import { CustomerState } from '@/lib/store/customer-store';
 
 // --- Mock Setup --- 
-let mockUiStateImplementation = (selector: (state: any) => any) => {
+let mockUiStateImplementation = (selector: (state: CustomerState) => any) => {
   // Default state (logged in)
-  const state = {
+  const state: Partial<CustomerState> = {
     pendingPlanId: PLAN_DETAILS[0].plan_id, 
     customerId: 'cus_123', 
     externalCustomerId: 'test_customer', 
@@ -17,7 +18,7 @@ let mockUiStateImplementation = (selector: (state: any) => any) => {
     reset: jest.fn(),
   };
   if (typeof selector === 'function') {
-    return selector(state);
+    return selector(state as CustomerState);
   }
   return state;
 };
@@ -50,8 +51,8 @@ describe('PlanSelectionDialog', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the implementation to default before each test
-    mockUiStateImplementation = (selector: (state: any) => any) => {
-        const state = {
+    mockUiStateImplementation = (selector: (state: CustomerState) => any) => {
+        const state: Partial<CustomerState> = {
             pendingPlanId: PLAN_DETAILS[0].plan_id, 
             customerId: 'cus_123',
             externalCustomerId: 'test_customer', 
@@ -60,24 +61,20 @@ describe('PlanSelectionDialog', () => {
             setExternalCustomerId: jest.fn(),
             reset: jest.fn(),
         };
-        if (typeof selector === 'function') { return selector(state); }
+        if (typeof selector === 'function') { return selector(state as CustomerState); }
         return state;
     };
   });
 
   test('Subscribe Now button is disabled if customerId prop is missing/empty', () => {
     // Arrange: Set the mock implementation specifically for this test
-    mockUiStateImplementation = (selector: (state: any) => any) => {
-        const state = {
+    mockUiStateImplementation = (selector: (state: CustomerState) => any) => {
+        const state: Partial<CustomerState> = {
             pendingPlanId: PLAN_DETAILS[0].plan_id, // A plan must be selected
             customerId: null, // Simulate store state for logged out
             externalCustomerId: null,
-            setPendingPlanId: jest.fn(),
-            setCustomerId: jest.fn(),
-            setExternalCustomerId: jest.fn(),
-            reset: jest.fn(),
           };
-          if (typeof selector === 'function') { return selector(state); }
+          if (typeof selector === 'function') { return selector(state as CustomerState); }
           return state;
     };
 

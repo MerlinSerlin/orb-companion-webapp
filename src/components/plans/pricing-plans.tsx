@@ -4,13 +4,15 @@ import { PlanCard } from "./plan-card"
 import { PLAN_DETAILS } from "./plan-data"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 
-interface PricingPlansProps {
-  // No props needed anymore
-}
+// Remove empty interface
+// interface PricingPlansProps {
+//   // No props needed anymore
+// }
 
 export function PricingPlans({ 
   // No props
-}: PricingPlansProps) {
+  // Remove type annotation if interface is removed
+}: {}) { // Use {} or remove props object entirely if not needed
   // Update hook and type usage
   const setPendingPlanId = useCustomerStore((state: CustomerState) => state.setPendingPlanId);
 
