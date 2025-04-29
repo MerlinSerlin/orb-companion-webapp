@@ -11,17 +11,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
+// import { Progress } from "@/components/ui/progress"
 // import { Separator } from "@/components/ui/separator"; // Removed unused import
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 // import { Skeleton } from "@/components/ui/skeleton"; // Removed unused import
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { InfoIcon, CheckCircle2, AlertCircle } from "lucide-react"
+// import { InfoIcon } from "lucide-react"
+import { CheckCircle2, AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types"; // Import renamed Subscription
 // Import PLAN_DETAILS
 import { PLAN_DETAILS } from "@/components/plans/plan-data";
 // Import the server action (though useQuery won't call it directly here)
-import { getCustomerSubscriptions } from "@/app/actions"
+// import { getCustomerSubscriptions } from "@/app/actions"
 
 // Exporting the type for use in the server component page
 export type { Subscription };
@@ -56,12 +57,6 @@ export function CustomerDashboardContent({ customerId }: CustomerDashboardConten
     queryFn: () => Promise.resolve([]), // Example: won't actually run on initial load if hydrated
     staleTime: Infinity, // Keep server-fetched data fresh
   });
-
-  // Removed hydration state effect
-  // useEffect(() => {
-  //   setIsHydrated(true)
-  // }, [])
-
   // Effect to process subscriptions data once fetched by useQuery
   useEffect(() => {
     // Check if data is loaded and not errored

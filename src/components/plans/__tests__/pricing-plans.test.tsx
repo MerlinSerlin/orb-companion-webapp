@@ -1,101 +1,59 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PricingPlans } from '../pricing-plans';
-import { useCustomerStore } from '@/lib/store/ui-store';
+import { PLAN_DETAILS } from '../plan-data';
 
-// Mock the store
+// Mock the UI store
+const mockSetPendingPlanId = jest.fn();
 jest.mock('@/lib/store/customer-store', () => ({
-  useCustomerStore: jest.fn()
-}));
-
-// Mock the enterprise contact dialog
-jest.mock('../../dialogs/enterprise-contact-dialog', () => ({
-  EnterpriseContactDialog: jest.fn(({ open, onOpenChange }) => (
-    <div data-testid="mock-enterprise-dialog">
-      {open ? 'Dialog Open' : 'Dialog Closed'}
-      <button onClick={() => onOpenChange(false)}>Close</button>
-    </div>
-  ))
-}));
-
-// Mock plan data
-jest.mock('../plan-data', () => ({
-  PLAN_DETAILS: [
-    {
-      name: 'Basic Plan',
-      plan_id: 'nimbus_scale_basic',
-      price: '$10',
-      description: 'Perfect for getting started',
-      features: [
-        { name: 'API Calls', value: '1,000/month' },
-        { name: 'Storage', value: '5GB' }
-      ],
-      cta: 'Select Plan'
-    },
-    {
-      name: 'Enterprise Plan',
-      plan_id: 'nimbus_scale_enterprise',
-      price: 'Custom',
-      description: 'For large organizations',
-      features: [
-        { name: 'API Calls', value: 'Unlimited' },
-        { name: 'Storage', value: 'Unlimited' }
-      ],
-      cta: 'Contact Sales'
+  useCustomerStore: jest.fn((selector) => {
+    // Simulate the selector logic for setPendingPlanId
+    if (selector.toString().includes('state.setPendingPlanId')) {
+      return mockSetPendingPlanId;
     }
-  ]
+    // Add default returns for other potential selectors if needed
+    return jest.fn(); 
+  }),
 }));
 
-describe('PricingPlans', () => {
-  // Mock functions and store setup
-  const mockSetPendingPlanId = jest.fn();
-  const mockOpenRegistration = jest.fn();
-  
+describe('PricingPlans Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    
-    // Default store state (user not logged in)
-    (useCustomerStore as unknown as jest.Mock).mockReturnValue({
-      customer: null,
-      pendingPlanId: null,
-      setPendingPlanId: mockSetPendingPlanId
-    });
+    // Reset mocks before each test
+    mockSetPendingPlanId.mockClear();
+    // Clear the mock implementation of the hook itself
+    jest.clearAllMocks(); // This clears all mocks, including useUiStore
+    // (useUiStore as jest.Mock).mockClear(); // <-- Incorrect type casting
   });
 
-  it('should call openRegistration when a plan is selected and user is not logged in', () => {
-    // Render the component
-    render(<PricingPlans openRegistration={mockOpenRegistration} />);
+  test('calls setPendingPlanId with the correct plan ID when a standard plan card is selected', () => {
+    render(<PricingPlans />);
+
+    // Find the button for the first plan (e.g., Starter)
+    const starterPlan = PLAN_DETAILS[0];
+    // Assuming the CTA text is unique enough or we target based on structure/test-id
+    // Let's find the button within the card that has the starter plan name
+    const starterCard = screen.getByText(starterPlan.name).closest('div.relative > div > *'); // Adjust selector based on actual DOM
+    if (!starterCard) throw new Error(`Could not find card for plan: ${starterPlan.name}`);
+
+    const selectButton = screen.getByRole('button', { name: starterPlan.cta as string }); // Find button by CTA text
     
-    // Find and click the Basic plan button (using the first CTA button we find)
-    const selectPlanButton = screen.getAllByRole('button', { name: /select plan/i })[0];
-    fireEvent.click(selectPlanButton);
-    
-    // Check that setPendingPlanId was called
-    expect(mockSetPendingPlanId).toHaveBeenCalled();
-    
-    // Check that openRegistration was called
-    expect(mockOpenRegistration).toHaveBeenCalled();
+    fireEvent.click(selectButton);
+
+    // Assert that the store action was called correctly
+    expect(mockSetPendingPlanId).toHaveBeenCalledTimes(1);
+    expect(mockSetPendingPlanId).toHaveBeenCalledWith(starterPlan.plan_id);
   });
 
-  it('should not call openRegistration when user is already logged in', () => {
-    // Mock logged-in user
-    (useCustomerStore as unknown as jest.Mock).mockReturnValue({
-      customer: { id: 'cust_123', subscriptions: [] },
-      pendingPlanId: null,
-      setPendingPlanId: mockSetPendingPlanId
-    });
-    
-    // Render the component
-    render(<PricingPlans openRegistration={mockOpenRegistration} />);
-    
-    // Find and click the Basic plan button
-    const selectPlanButton = screen.getAllByRole('button', { name: /select plan/i })[0];
-    fireEvent.click(selectPlanButton);
-    
-    // Check that setPendingPlanId was called
-    expect(mockSetPendingPlanId).toHaveBeenCalled();
-    
-    // Check that openRegistration was NOT called
-    expect(mockOpenRegistration).not.toHaveBeenCalled();
+  test('calls setPendingPlanId with the enterprise plan ID when the contact sales button is clicked', () => {
+    render(<PricingPlans />);
+
+    // Find the "Contact our sales team" button
+    const contactButton = screen.getByRole('button', { name: /Contact our sales team/i });
+
+    fireEvent.click(contactButton);
+
+    // Assert that the store action was called correctly
+    expect(mockSetPendingPlanId).toHaveBeenCalledTimes(1);
+    expect(mockSetPendingPlanId).toHaveBeenCalledWith('nimbus_scale_enterprise');
   });
-}); 
+});

@@ -1,41 +1,25 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { PlanCard } from "./plan-card"
 import { PLAN_DETAILS } from "./plan-data"
-import { useUiStore, type UiState } from "@/lib/store/ui-store"
-import { EnterpriseContactDialog } from "../dialogs/enterprise-contact-dialog"
+import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 
 interface PricingPlansProps {
-  openRegistration: () => void
+  // No props needed anymore
 }
 
 export function PricingPlans({ 
-  openRegistration 
+  // No props
 }: PricingPlansProps) {
-  const pendingPlanId = useUiStore((state: UiState) => state.pendingPlanId);
-  const setPendingPlanId = useUiStore((state: UiState) => state.setPendingPlanId);
+  // Update hook and type usage
+  const setPendingPlanId = useCustomerStore((state: CustomerState) => state.setPendingPlanId);
 
-  const [isEnterpriseDialogOpen, setIsEnterpriseDialogOpen] = useState(false)
-  
-  const handleEnterpriseDialogChange = (isOpen: boolean) => {
-    setIsEnterpriseDialogOpen(isOpen);
-    
-    if (!isOpen && pendingPlanId === "nimbus_scale_enterprise") {
-      setPendingPlanId(null);
-    }
-  }
-
+  // SIMPLIFIED: Function only sets the pending plan ID
   const handlePlanSelection = (planId: string) => {
     if (!planId) return;
-    
-    setPendingPlanId(planId);
-
-    if (planId === "nimbus_scale_enterprise") {
-      setIsEnterpriseDialogOpen(true);
-    } else {
-      openRegistration();
-    }
+    console.log('[PricingPlans] Setting pending plan ID:', planId);
+    setPendingPlanId(planId); 
+    // Logic to open dialogs is handled by parent (Home)
   }
 
   return (
@@ -78,11 +62,6 @@ export function PricingPlans({
           </button>
         </div>
       </div>
-
-      <EnterpriseContactDialog 
-        open={isEnterpriseDialogOpen} 
-        onOpenChange={handleEnterpriseDialogChange} 
-      />
     </section>
   )
 }

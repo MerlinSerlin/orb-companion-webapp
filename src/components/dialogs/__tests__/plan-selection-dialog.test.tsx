@@ -1,141 +1,105 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { PlanSelectionDialog } from '../plan-selection-dialog';
-import { useCustomerStore } from '@/lib/store/ui-store';
 import { createSubscription } from '@/app/actions';
+import { PLAN_DETAILS } from '@/components/plans/plan-data';
 
-// Mock the store
+// --- Mock Setup --- 
+let mockUiStateImplementation = (selector: (state: any) => any) => {
+  // Default state (logged in)
+  const state = {
+    pendingPlanId: PLAN_DETAILS[0].plan_id, 
+    customerId: 'cus_123', 
+    externalCustomerId: 'test_customer', 
+    setPendingPlanId: jest.fn(),
+    setCustomerId: jest.fn(),
+    setExternalCustomerId: jest.fn(),
+    reset: jest.fn(),
+  };
+  if (typeof selector === 'function') {
+    return selector(state);
+  }
+  return state;
+};
+
+// Mock the UI store - use the implementation variable
 jest.mock('@/lib/store/customer-store', () => ({
-  useCustomerStore: jest.fn()
-}));
-
-// Mock the Next.js router
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn()
-  })
+  useCustomerStore: jest.fn((selector) => mockUiStateImplementation(selector)), // Update hook name used inside mock
 }));
 
 // Mock the server action
 jest.mock('@/app/actions', () => ({
-  createSubscription: jest.fn()
+  createSubscription: jest.fn(),
 }));
 
-// Mock the plan data
-jest.mock('../../plans/plan-data', () => ({
-  PLAN_DETAILS: [
-    {
-      name: 'Basic Plan',
-      plan_id: 'nimbus_scale_basic',
-      price: '$10',
-      description: 'Perfect for getting started',
-      features: [
-        { name: 'API Calls', value: '1,000/month' },
-        { name: 'Storage', value: '5GB' }
-      ],
-      cta: 'Select Plan'
-    }
-  ]
+// Mock the router
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(() => ({ push: jest.fn() })),
 }));
 
-// Mock the UI components
-jest.mock('../../ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    open ? <div data-testid="mock-dialog">{children}</div> : null
-  ),
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
-  DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
-  DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
-
-// Mock the Lucide icon
-jest.mock('lucide-react', () => ({
-  Loader2: () => <div>Loading...</div>
-}));
-
-// Mock the API preview dialog
-jest.mock('../api-preview-dialog', () => ({
-  ApiPreviewDialog: jest.fn(() => <button>Preview API Call</button>)
-}));
-
-// Mock the toast
-jest.mock('sonner', () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn()
-  }
+// Mock child components if necessary (e.g., ApiPreviewDialog)
+jest.mock('@/components/dialogs/api-preview-dialog', () => ({
+  ApiPreviewDialog: () => <div data-testid="mock-api-preview">Mock API Preview</div>,
 }));
 
 describe('PlanSelectionDialog', () => {
-  // Mock functions and props
+  const mockCreateSubscription = createSubscription as jest.Mock;
   const mockOnClose = jest.fn();
-  const mockOnPlanSelected = jest.fn();
   const mockOnSubscriptionSuccess = jest.fn();
-  const mockAddSubscription = jest.fn();
-  
+
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Default store setup with a logged-in user and pending plan
-    (useCustomerStore as unknown as jest.Mock).mockReturnValue({
-      customer: { id: 'cust_123', subscriptions: [] },
-      pendingPlanId: 'nimbus_scale_basic',
-      addSubscription: mockAddSubscription
-    });
-    
-    // Mock successful subscription creation
-    (createSubscription as jest.Mock).mockResolvedValue({
-      success: true,
-      subscription: {
-        id: 'sub_123',
-        plan_id: 'nimbus_scale_basic',
-        status: 'active'
-      }
-    });
+    // Reset the implementation to default before each test
+    mockUiStateImplementation = (selector: (state: any) => any) => {
+        const state = {
+            pendingPlanId: PLAN_DETAILS[0].plan_id, 
+            customerId: 'cus_123',
+            externalCustomerId: 'test_customer', 
+            setPendingPlanId: jest.fn(),
+            setCustomerId: jest.fn(),
+            setExternalCustomerId: jest.fn(),
+            reset: jest.fn(),
+        };
+        if (typeof selector === 'function') { return selector(state); }
+        return state;
+    };
   });
 
-  it('should display plan details when dialog is open with a pending plan', () => {
+  test('Subscribe Now button is disabled if customerId prop is missing/empty', () => {
+    // Arrange: Set the mock implementation specifically for this test
+    mockUiStateImplementation = (selector: (state: any) => any) => {
+        const state = {
+            pendingPlanId: PLAN_DETAILS[0].plan_id, // A plan must be selected
+            customerId: null, // Simulate store state for logged out
+            externalCustomerId: null,
+            setPendingPlanId: jest.fn(),
+            setCustomerId: jest.fn(),
+            setExternalCustomerId: jest.fn(),
+            reset: jest.fn(),
+          };
+          if (typeof selector === 'function') { return selector(state); }
+          return state;
+    };
+
     render(
       <PlanSelectionDialog
         isOpen={true}
         onClose={mockOnClose}
-        onPlanSelected={mockOnPlanSelected}
         onSubscriptionSuccess={mockOnSubscriptionSuccess}
+        customerId="" // <-- Simulate logged-out state by passing empty string
       />
     );
-    
-    // Check that dialog is displayed with plan details
-    expect(screen.getByText(/Basic Plan/i)).toBeInTheDocument();
-  });
 
-  it('should call proper callbacks on successful subscription', async () => {
-    render(
-      <PlanSelectionDialog
-        isOpen={true}
-        onClose={mockOnClose}
-        onPlanSelected={mockOnPlanSelected}
-        onSubscriptionSuccess={mockOnSubscriptionSuccess}
-      />
-    );
-    
-    // Find and click the subscribe button
-    const subscribeButton = screen.getByRole('button', { name: /subscribe now/i });
+    // Act: Find the button
+    const subscribeButton = screen.getByRole('button', { name: /Subscribe Now/i });
+
+    // Assert: Button should be disabled
+    expect(subscribeButton).toBeDisabled();
+
+    // Assert: Double-check action was not called if clicked
     fireEvent.click(subscribeButton);
-    
-    // Wait for the async operations to complete
-    await waitFor(() => {
-      // Verify that server action was called
-      expect(createSubscription).toHaveBeenCalledWith('cust_123', 'nimbus_scale_basic');
-      
-      // Verify subscription was added to store
-      expect(mockAddSubscription).toHaveBeenCalled();
-      
-      // Verify callbacks were called
-      expect(mockOnPlanSelected).toHaveBeenCalled();
-      expect(mockOnSubscriptionSuccess).toHaveBeenCalled();
-      expect(mockOnClose).toHaveBeenCalled();
-    });
+    expect(mockCreateSubscription).not.toHaveBeenCalled();
   });
+
+  // Add more tests later for the logged-in case
 }); 

@@ -5,8 +5,8 @@ import type {
   GetSubscriptionsResult, 
   Subscription, 
   GetCustomerDetailsResult, 
-  CustomerDetails 
 } from "@/lib/types";
+import type { CustomerDetails } from "@/lib/types";
 
 export async function createCustomer(name: string, email: string) {
   try {
@@ -25,6 +25,7 @@ export async function createCustomer(name: string, email: string) {
     return {
       success: true,
       customerId: customer.id,
+      externalCustomerId: customer.external_customer_id,
     }
   } catch (error) {
     console.error("Error creating customer:", error)

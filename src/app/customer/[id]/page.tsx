@@ -5,10 +5,8 @@ import { HydrationBoundary, QueryClient, dehydrate } from '@tanstack/react-query
 import { CustomerDashboardContent } from "@/components/customer/dashboard-content"
 // Import both server actions
 import { getCustomerSubscriptions, getCustomerDetails } from "@/app/actions"
-// No longer need Subscription type here if passed via hydration
-// import type { Subscription } from "@/lib/types"
-
 // Define a simple loading skeleton component
+
 function DashboardLoadingSkeleton() {
   // Using a simple text loader for now, could be enhanced with Skeleton components
   return <div className="p-8 text-center">Loading dashboard...</div>;

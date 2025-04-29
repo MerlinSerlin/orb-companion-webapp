@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useUiStore, type UiState } from "@/lib/store/ui-store"
+import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import { createSubscription } from "@/app/actions"
 import {
   Dialog,
@@ -34,7 +34,7 @@ export function PlanSelectionDialog({
   onSubscriptionSuccess
 }: PlanSelectionDialogProps) {
   const router = useRouter()
-  const pendingPlanId = useUiStore((state: UiState) => state.pendingPlanId)
+  const pendingPlanId = useCustomerStore((state: CustomerState) => state.pendingPlanId)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<typeof PLAN_DETAILS[0] | null>(null)
@@ -120,7 +120,7 @@ export function PlanSelectionDialog({
             {selectedPlan ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">{selectedPlan.name} Plan</h3>
+                  <h3 className="text-lg font-semibold">{selectedPlan.name}</h3>
                   {selectedPlan.price && (
                     <div className="text-lg font-bold">{selectedPlan.price}<span className="text-sm text-muted-foreground">/month</span></div>
                   )}
