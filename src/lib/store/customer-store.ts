@@ -28,7 +28,7 @@ const mockStorage: StateStorage = {
 
 export const useCustomerStore = create<CustomerState>()(
   persist(
-    (set, _get) => ({
+    (set) => ({
       ...initialState,
       setPendingPlanId: (planId: string | null) => set({ pendingPlanId: planId }),
       setCustomerId: (id: string | null) => set({ customerId: id }),

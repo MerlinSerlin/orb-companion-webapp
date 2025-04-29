@@ -6,7 +6,7 @@ import { PLAN_DETAILS } from '@/components/plans/plan-data';
 import { CustomerState } from '@/lib/store/customer-store';
 
 // --- Mock Setup --- 
-let mockUiStateImplementation = (selector: (state: CustomerState) => any) => {
+let mockUiStateImplementation = (selector: (state: CustomerState) => unknown) => {
   // Default state (logged in)
   const state: Partial<CustomerState> = {
     pendingPlanId: PLAN_DETAILS[0].plan_id, 
@@ -51,7 +51,7 @@ describe('PlanSelectionDialog', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the implementation to default before each test
-    mockUiStateImplementation = (selector: (state: CustomerState) => any) => {
+    mockUiStateImplementation = (selector: (state: CustomerState) => unknown) => {
         const state: Partial<CustomerState> = {
             pendingPlanId: PLAN_DETAILS[0].plan_id, 
             customerId: 'cus_123',
@@ -68,7 +68,7 @@ describe('PlanSelectionDialog', () => {
 
   test('Subscribe Now button is disabled if customerId prop is missing/empty', () => {
     // Arrange: Set the mock implementation specifically for this test
-    mockUiStateImplementation = (selector: (state: CustomerState) => any) => {
+    mockUiStateImplementation = (selector: (state: CustomerState) => unknown) => {
         const state: Partial<CustomerState> = {
             pendingPlanId: PLAN_DETAILS[0].plan_id, // A plan must be selected
             customerId: null, // Simulate store state for logged out

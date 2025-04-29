@@ -9,10 +9,7 @@ import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store
 //   // No props needed anymore
 // }
 
-export function PricingPlans({ 
-  // No props
-  // Remove type annotation if interface is removed
-}: {}) { // Use {} or remove props object entirely if not needed
+export function PricingPlans() {
   // Update hook and type usage
   const setPendingPlanId = useCustomerStore((state: CustomerState) => state.setPendingPlanId);
 
