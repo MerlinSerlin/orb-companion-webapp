@@ -1,7 +1,11 @@
 "use server"
 
 import { orbClient } from "@/lib/orb"
-import type { GetSubscriptionsResult, Subscription } from "@/lib/types";
+import type { 
+  GetSubscriptionsResult, 
+  Subscription, 
+  GetCustomerDetailsResult, 
+} from "@/lib/types";
 
 export async function createCustomer(name: string, email: string) {
   try {
@@ -20,6 +24,7 @@ export async function createCustomer(name: string, email: string) {
     return {
       success: true,
       customerId: customer.id,
+      externalCustomerId: customer.external_customer_id,
     }
   } catch (error) {
     console.error("Error creating customer:", error)
@@ -65,31 +70,44 @@ export async function getCustomerSubscriptions(customerId: string): Promise<GetS
     // Assume Orb SDK type (adjust if needed)
     type OrbSDKSubscription = {
       id: string;
+      name?: string;
+      currency?: string;
       status: 'active' | 'canceled' | 'ended' | 'pending' | 'upcoming';
       start_date?: string | null;
       end_date?: string | null;
-      current_period_start?: string | null;
-      current_period_end?: string | null;
+      current_billing_period_start_date?: string | null;
+      current_billing_period_end_date?: string | null;
       plan?: { id: string; name?: string } | null; 
+      customer?: { 
+        id: string;
+        external_customer_id?: string | null; 
+      } | null;
     };
 
     const orbResponse = await orbClient.subscriptions.list({
       customer_id: [customerId],
     })
 
+    // Extract external ID from the first subscription (assuming it's consistent)
+    const externalCustomerId = orbResponse.data?.[0]?.customer?.external_customer_id;
+
     // Map the SDK response to our Subscription structure
     const subscriptionsData: Subscription[] = orbResponse.data.map((sdkSub: OrbSDKSubscription) => ({
       id: sdkSub.id,
+      name: sdkSub.name,
       plan_id: sdkSub.plan?.id || 'unknown_plan_id', 
+      planName: sdkSub.plan?.name,
+      currency: sdkSub.currency,
       status: sdkSub.status,
       start_date: sdkSub.start_date,
       end_date: sdkSub.end_date,
-      current_period_start: sdkSub.current_period_start,
-      current_period_end: sdkSub.current_period_end,
+      current_period_start: sdkSub.current_billing_period_start_date,
+      current_period_end: sdkSub.current_billing_period_end_date,
     }));
 
     return {
       success: true,
+      externalCustomerId: externalCustomerId,
       subscriptions: subscriptionsData,
     }
   } catch (error) {
@@ -230,6 +248,45 @@ export async function getCustomerSubscriptions(customerId: string): Promise<GetS
 //     }
 //   }
 // }
+
+// --- NEW SERVER ACTION --- 
+export async function getCustomerDetails(customerId: string): Promise<GetCustomerDetailsResult> {
+  try {
+    console.log(`Fetching details for customer ${customerId}`);
+    
+    const customer = await orbClient.customers.fetch(customerId);
+
+    // Check if customer was found (Orb might throw an error or return null/empty)
+    // Adjust this check based on actual Orb SDK behavior for not found
+    if (!customer) {
+      throw new Error('Customer not found');
+    }
+    
+    return {
+      success: true,
+      customer: {
+        id: customer.id,
+        external_customer_id: customer.external_customer_id,
+        name: customer.name,
+        email: customer.email,
+        // Map other relevant fields if added to CustomerDetails type
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching customer details:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch customer details';
+    // Distinguish between not found and other errors if possible
+    const isNotFoundError = errorMessage.toLowerCase().includes('not found'); // Basic check
+    
+    return {
+      success: false,
+      // Return null for customer on error
+      customer: null, 
+      // Optionally provide more specific error, or just the message
+      error: isNotFoundError ? 'Customer not found' : errorMessage, 
+    };
+  }
+}
 
 
 

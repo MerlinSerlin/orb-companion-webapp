@@ -1,73 +1,24 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { PlanCard } from "./plan-card"
 import { PLAN_DETAILS } from "./plan-data"
-import { useCustomerStore } from "@/lib/store/customer-store"
-import { EnterpriseContactDialog } from "../dialogs/enterprise-contact-dialog"
+import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 
-interface PricingPlansProps {
-  openRegistration: (callback?: () => void) => void
-}
+// Remove empty interface
+// interface PricingPlansProps {
+//   // No props needed anymore
+// }
 
-export function PricingPlans({ 
-  openRegistration 
-}: PricingPlansProps) {
-  const { 
-    customer,
-    pendingPlanId,
-    setPendingPlanId
-  } = useCustomerStore()
+export function PricingPlans() {
+  // Update hook and type usage
+  const setPendingPlanId = useCustomerStore((state: CustomerState) => state.setPendingPlanId);
 
-  const [isEnterpriseDialogOpen, setIsEnterpriseDialogOpen] = useState(false)
-  
-  // Check if we need to show enterprise dialog after login
-  useEffect(() => {
-    if (customer && pendingPlanId === "nimbus_scale_enterprise") {
-      // Show the enterprise dialog with a small delay to allow any other dialogs to close first
-      setTimeout(() => {
-        setIsEnterpriseDialogOpen(true)
-      }, 500);
-    }
-  }, [customer, pendingPlanId])
-
-  // Handle enterprise dialog state changes
-  const handleEnterpriseDialogChange = (isOpen: boolean) => {
-    setIsEnterpriseDialogOpen(isOpen);
-    
-    // When dialog closes, clear the enterprise plan from pendingPlanId
-    if (!isOpen && pendingPlanId === "nimbus_scale_enterprise") {
-      // Reset pendingPlanId to prevent dialog from reopening
-      setPendingPlanId(null);
-    }
-  }
-
-  // Function to handle when a user selects a plan
+  // SIMPLIFIED: Function only sets the pending plan ID
   const handlePlanSelection = (planId: string) => {
-    // Validate planId (basic check only)
-    if (!planId) {
-      return;
-    }
-    
-    // Update the store with the selected plan ID
-    setPendingPlanId(planId);
-
-    if (!customer) {
-      // If user is not logged in, redirect to registration
-      openRegistration();
-    } else if (planId === "nimbus_scale_enterprise") {
-      // For enterprise plan, show the enterprise dialog
-      setIsEnterpriseDialogOpen(true);
-    }
-    // No else needed - parent component will handle opening plan selection dialog
-  }
-
-  // Check if customer is already subscribed to this plan
-  const isSubscribedToPlan = (planId: string) => {
-    if (!customer || !customer.subscriptions) return false;
-    return customer.subscriptions.some(
-      sub => sub.plan_id === planId && sub.status === 'active'
-    );
+    if (!planId) return;
+    console.log('[PricingPlans] Setting pending plan ID:', planId);
+    setPendingPlanId(planId); 
+    // Logic to open dialogs is handled by parent (Home)
   }
 
   return (
@@ -79,7 +30,7 @@ export function PricingPlans({
 
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto relative">
           {PLAN_DETAILS.map((plan) => {
-            const isCurrentPlan = isSubscribedToPlan(plan.plan_id);
+            const isCurrentPlan = false;
             
             return (
               <PlanCard
@@ -110,11 +61,6 @@ export function PricingPlans({
           </button>
         </div>
       </div>
-
-      <EnterpriseContactDialog 
-        open={isEnterpriseDialogOpen} 
-        onOpenChange={handleEnterpriseDialogChange} 
-      />
     </section>
   )
 }

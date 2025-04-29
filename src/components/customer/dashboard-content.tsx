@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+// Import useQuery
+import { useQuery } from '@tanstack/react-query'
 // Removed Zustand import as it's no longer needed for auth check here
 // import { useCustomerStore } from "@/lib/store/customer-store"
 import { Header } from "@/components/ui/header"
@@ -9,68 +11,72 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
+// import { Progress } from "@/components/ui/progress"
 // import { Separator } from "@/components/ui/separator"; // Removed unused import
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 // import { Skeleton } from "@/components/ui/skeleton"; // Removed unused import
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { InfoIcon, CheckCircle2 } from "lucide-react"
+// import { InfoIcon } from "lucide-react"
+import { CheckCircle2, AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types"; // Import renamed Subscription
+// Import PLAN_DETAILS
+import { PLAN_DETAILS } from "@/components/plans/plan-data";
+// Import the server action (though useQuery won't call it directly here)
+// import { getCustomerSubscriptions } from "@/app/actions"
 
 // Exporting the type for use in the server component page
 export type { Subscription };
 
-interface SubscriptionFeature {
-  name: string
-  value: string
-  used?: number | null
-  limit?: number | null
-  percentage?: number | null
+// Use the Feature type from PLAN_DETAILS if possible, or redefine if needed
+// Assuming PLAN_DETAILS features have { name: string; value: string; ...? }
+interface DisplayFeature {
+  name: string;
+  value: string;
 }
 
 interface CustomerDashboardContentProps {
-  customerId: string;
-  initialSubscriptions: Subscription[]; // Use renamed Subscription
+  customerId: string; // Only need customerId for query key
+  // REMOVED externalCustomerId and initialSubscriptions
 }
 
-export function CustomerDashboardContent({ customerId, initialSubscriptions }: CustomerDashboardContentProps) {
+export function CustomerDashboardContent({ customerId }: CustomerDashboardContentProps) {
   const router = useRouter()
   // Removed customer state access
   // const { customer } = useCustomerStore()
   const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null)
-  const [features, setFeatures] = useState<SubscriptionFeature[]>([])
+  const [features, setFeatures] = useState<DisplayFeature[]>([])
   // Removed isHydrated state
   // const [isHydrated, setIsHydrated] = useState(false)
 
-  // Removed hydration state effect
-  // useEffect(() => {
-  //   setIsHydrated(true)
-  // }, [])
-
-  // Determine active subscription and features based on initial data
+  // Fetch subscriptions using useQuery
+  const { data: subscriptions, isLoading: isLoadingSubscriptions, error: subscriptionsError } = useQuery<Subscription[], Error>({
+    // Use the same query key as in the server page prefetch
+    queryKey: ['subscriptions', customerId],
+    // queryFn is technically required, but data should be hydrated from the server.
+    // Provide a dummy function or refetch logic if needed for client-side updates.
+    queryFn: () => Promise.resolve([]), // Example: won't actually run on initial load if hydrated
+    staleTime: Infinity, // Keep server-fetched data fresh
+  });
+  // Effect to process subscriptions data once fetched by useQuery
   useEffect(() => {
-    if (initialSubscriptions.length > 0) {
-      const active = initialSubscriptions.find(sub => sub.status === "active")
-      const currentSub = active || initialSubscriptions[0] // Fallback to first if no active
+    // Check if data is loaded and not errored
+    if (subscriptions && subscriptions.length > 0) { 
+      const active = subscriptions.find(sub => sub.status === "active")
+      const currentSub = active || subscriptions[0]
       setActiveSubscription(currentSub)
 
-      // Mock features based on the determined active/current subscription
       if (currentSub) {
-        // TODO: Replace with actual feature/entitlement logic based on plan_id or other data
-        const mockFeatures = [
-          { name: "API Requests", value: "5,000/month", used: 1250, limit: 5000, percentage: 25 },
-          { name: "Storage", value: "50 GB", used: 15, limit: 50, percentage: 30 },
-          { name: "Users", value: "10 team members", used: 4, limit: 10, percentage: 40 },
-          { name: "Projects", value: "Unlimited", used: 12, limit: null, percentage: null },
-          { name: "Support", value: "Priority", used: null, limit: null, percentage: null },
-        ]
-        setFeatures(mockFeatures)
+        const matchingPlan = PLAN_DETAILS.find(plan => plan.plan_id === currentSub.plan_id);
+        setFeatures(matchingPlan?.features || []); 
+      } else {
+        setFeatures([]);
       }
-    } else {
-      setActiveSubscription(null) // No subscriptions
+    } else if (subscriptions) { // Data loaded, but empty array
+      setActiveSubscription(null)
       setFeatures([])
-    }
-  }, [initialSubscriptions])
+    } 
+    // Handle loading/error states outside useEffect if preferred
+  }, [subscriptions]) // Depend on the data from useQuery
 
   // Removed the redirect logic effect based on customer/hydration
   // useEffect(() => {
@@ -88,14 +94,24 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
 
   // --- Render Logic --- 
 
-  // Removed hydration/customer checks - rely on Server Component redirect for invalid IDs
-  // if (!isHydrated) {
-  //   return <div className="p-8 text-center">Loading...</div>
-  // }
-  // 
-  // if (!customer) {
-  //   return <div className="p-8 text-center">Verifying session...</div>
-  // }
+  if (isLoadingSubscriptions) {
+    // Can use the skeleton from the server component or a simpler one here
+    return <div className="p-8 text-center">Loading dashboard content...</div>;
+  }
+
+  if (subscriptionsError) {
+    return (
+      <div className="container mx-auto p-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            Failed to load subscription data: {subscriptionsError.message}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'N/A'
@@ -123,35 +139,32 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            {/* REMOVED Back to Home Button
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mb-2"
-              onClick={() => router.push("/")}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
-            </Button>
-            */}
+            {/* REMOVED Back to Home Button */}
             <h1 className="text-3xl font-bold tracking-tight">Subscription Dashboard</h1>
-            {/* Displaying Customer ID as name might not be available without Zustand state */}
+            {/* REMOVED description paragraph */}
+            {/* 
             <p className="text-muted-foreground">
-              Manage your subscription and view your usage for Customer ID: {customerId}
+              Manage your subscription and view your usage for Customer: {externalCustomerId}
             </p>
+             */}
           </div>
+          {/* REMOVED badge container div */}
+          {/* 
           <div className="flex items-center space-x-2">
             <Badge variant="outline" className="text-sm">
-              Customer ID: {customerId}
+              Customer ID: {externalCustomerId}
             </Badge>
           </div>
+           */}
         </div>
         
-        {initialSubscriptions.length === 0 ? (
+        {/* Use fetched subscriptions data */}
+        {!subscriptions || subscriptions.length === 0 ? (
           <Card>
             <CardHeader>
               <CardTitle>No Subscriptions Found</CardTitle>
               <CardDescription>
+                {/* Display internal ID from prop since external ID isn't here anymore */}
                 Customer {customerId} doesn&apos;t have any active subscriptions yet.
               </CardDescription>
             </CardHeader>
@@ -165,7 +178,7 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="usage">Usage & Limits</TabsTrigger>
+              <TabsTrigger value="usage">Usage</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
             </TabsList>
             
@@ -175,6 +188,7 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       Subscription Details
+                      {/* Use derived activeSubscription state */}
                       {activeSubscription && (
                         <Badge className={`ml-2 ${getStatusColor(activeSubscription.status)}`}>
                           {activeSubscription.status}
@@ -182,15 +196,17 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
                       )}
                     </CardTitle>
                     <CardDescription>
+                      {/* Display internal ID from prop */}
                       Information about the primary subscription for {customerId}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
+                    {/* Use derived activeSubscription state */}
                     {activeSubscription ? (
                       <dl className="space-y-4 text-sm">
                         <div className="flex justify-between">
-                          <dt className="font-medium text-gray-500">Plan ID</dt>
-                          <dd>{activeSubscription.plan_id}</dd>
+                          <dt className="font-medium text-gray-500">Plan Name</dt>
+                          <dd>{activeSubscription.planName || activeSubscription.plan_id}</dd>
                         </div>
                         <div className="flex justify-between">
                           <dt className="font-medium text-gray-500">Status</dt>
@@ -205,6 +221,10 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
                           <dd>{formatDate(activeSubscription.start_date)}</dd>
                         </div>
                         <div className="flex justify-between">
+                          <dt className="font-medium text-gray-500">Current Period Starts</dt>
+                          <dd>{formatDate(activeSubscription.current_period_start)}</dd>
+                        </div>
+                        <div className="flex justify-between">
                           <dt className="font-medium text-gray-500">Current Period Ends</dt>
                           <dd>{formatDate(activeSubscription.current_period_end)}</dd>
                         </div>
@@ -214,7 +234,7 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
                         </div>
                       </dl>
                     ) : (
-                      <p>No active subscription found for {customerId}.</p>
+                      <p>Processing subscription details...</p> 
                     )}
                   </CardContent>
                   <CardFooter>
@@ -226,7 +246,7 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
                 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Entitlements (Mock)</CardTitle>
+                    <CardTitle>Entitlements</CardTitle>
                     <CardDescription>
                       Features included in the current plan
                     </CardDescription>
@@ -255,39 +275,26 @@ export function CustomerDashboardContent({ customerId, initialSubscriptions }: C
             <TabsContent value="usage">
               <Card>
                 <CardHeader>
-                  <CardTitle>Usage & Limits (Mock)</CardTitle>
+                  <CardTitle>Usage</CardTitle>
                   <CardDescription>
-                    Monitor your resource usage against your plan limits
+                    Overview of included features based on your plan.
+                    {/* Usage details are currently based on PLAN_DETAILS, not live data. */}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {features.some(f => f.limit !== null) ? (
-                    <div className="space-y-6">
-                      {features.filter(f => f.limit !== null).map((feature, index) => (
-                        <div key={index} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">{feature.name}</span>
-                            <span className="text-sm text-muted-foreground">
-                              {feature.used ?? 'N/A'} / {feature.limit} ({feature.percentage ?? 'N/A'}%)
-                            </span>
-                          </div>
-                          <Progress value={feature.percentage ?? 0} className="h-2" />
+                <CardContent className="space-y-6">
+                  {features.length > 0 ? (
+                    features.map((feature, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{feature.name}</span>
+                          <span className="text-sm text-muted-foreground">{feature.value}</span>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))
                   ) : (
-                    <p>No usage data with limits available for this plan.</p>
+                    <p>No feature details available for this plan.</p>
                   )}
                 </CardContent>
-                <CardFooter>
-                  <Alert>
-                    <InfoIcon className="h-4 w-4" />
-                    <AlertTitle>Usage Information</AlertTitle>
-                    <AlertDescription>
-                      Usage data may be delayed. Last mock update: {new Date().toLocaleDateString()}.
-                    </AlertDescription>
-                  </Alert>
-                </CardFooter>
               </Card>
             </TabsContent>
             

@@ -1,10 +1,12 @@
 import { Suspense } from "react"
 import { notFound } from 'next/navigation'
+// Import React Query client and hydration components
+import { HydrationBoundary, QueryClient, dehydrate } from '@tanstack/react-query' 
 import { CustomerDashboardContent } from "@/components/customer/dashboard-content"
-import { getCustomerSubscriptions } from "@/app/actions"
-import type { Subscription } from "@/lib/types"
-
+// Import both server actions
+import { getCustomerSubscriptions, getCustomerDetails } from "@/app/actions"
 // Define a simple loading skeleton component
+
 function DashboardLoadingSkeleton() {
   // Using a simple text loader for now, could be enhanced with Skeleton components
   return <div className="p-8 text-center">Loading dashboard...</div>;
@@ -24,27 +26,46 @@ export default async function CustomerDashboardPage({
   const awaitedParams = await params;
   const customerId = awaitedParams.id;
   
-  // Fetch subscriptions server-side
-  const subscriptionResult = await getCustomerSubscriptions(customerId)
+  // Create a new QueryClient instance for prefetching
+  const queryClient = new QueryClient();
 
-  // Handle errors or cases where the customer/subscriptions can't be fetched
-  if (!subscriptionResult.success) {
-    console.error("Failed to fetch subscriptions for customer:", customerId, subscriptionResult.error);
-    // Trigger the 404 page if the customer ID is invalid or API fails
-    notFound(); 
-  }
+  // Prefetch both subscriptions and customer details
+  await queryClient.prefetchQuery({
+    queryKey: ['subscriptions', customerId],
+    queryFn: async () => {
+      const result = await getCustomerSubscriptions(customerId);
+      if (!result.success) {
+        // Handle error appropriately, maybe throw to trigger error boundary or notFound
+        console.error("Prefetch failed for subscriptions:", result.error);
+        notFound(); // Or throw new Error(result.error)
+      }
+      return result.subscriptions || []; // Return the data part
+    },
+  });
 
-  // Type assertion is now safe as the action returns the correct type or null
-  const subscriptions: Subscription[] = subscriptionResult.subscriptions || [];
-  
-  // Note: We intentionally DO NOT call notFound() if subscriptions is empty.
-  // An empty array means the customer ID was valid in Orb, but they have no subscriptions.
-  // We'll handle displaying that state in the CustomerDashboardContent component.
+  await queryClient.prefetchQuery({
+    queryKey: ['customer', customerId],
+    queryFn: async () => {
+      const result = await getCustomerDetails(customerId);
+      if (!result.success) {
+        console.error("Prefetch failed for customer details:", result.error);
+        notFound(); // Or throw new Error(result.error)
+      }
+      return result.customer; // Return the data part
+    },
+  });
+
+  // No longer need to extract data directly here for props
+  // const subscriptions: Subscription[] = subscriptionResult.subscriptions || [];
+  // const externalCustomerId = subscriptionResult.externalCustomerId;
   
   return (
-    <Suspense fallback={<DashboardLoadingSkeleton />}>
-      {/* Pass fetched subscriptions directly to the client component */}
-      <CustomerDashboardContent customerId={customerId} initialSubscriptions={subscriptions} />
-    </Suspense>
+    // Pass the dehydrated cache state to the boundary
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <Suspense fallback={<DashboardLoadingSkeleton />}>
+        {/* Pass only the customerId needed for query keys in client components */}
+        <CustomerDashboardContent customerId={customerId} />
+      </Suspense>
+    </HydrationBoundary>
   )
 } 

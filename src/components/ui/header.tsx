@@ -4,69 +4,56 @@ import { useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
-import { useCustomerStore } from "@/lib/store/customer-store"
+import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import { SignUpButton } from "./sign-up-button"
 import { CustomerRegistrationDialog } from "@/components/dialogs/customer-registration-dialog"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export function Header() {
   const router = useRouter()
   const pathname = usePathname()
-  const { 
-    customer,
-    reset 
-  } = useCustomerStore()
+  const resetZustand = useCustomerStore((state: CustomerState) => state.reset)
+  const authenticatedCustomerId = useCustomerStore((state: CustomerState) => state.customerId);
+  const externalCustomerId = useCustomerStore((state: CustomerState) => state.externalCustomerId);
   
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
-
-  const handleLogout = () => {
-    reset() // Clear customer state
-    router.push('/') // Redirect to homepage
-  }
-
-  const goToDashboard = () => {
-    if (customer) {
-      router.push(`/customer/${customer.id}`)
-    }
-  }
   
-  const isHomePage = pathname === '/';
-  // Check if it's a customer dashboard page
-  const isDashboardPage = pathname.startsWith('/customer/');
+  const handleLogout = () => {
+    resetZustand() 
+    router.push('/')
+  }
+
+  const isHomePage = pathname === '/'
 
   return (
     <header className="border-b">
       <div className="container mx-auto flex h-16 items-center justify-between">
         <Logo />
         <div className="flex items-center gap-4">
-          {/* Homepage: Show Welcome/Dashboard/Logout or Sign Up */}
-          {isHomePage && customer && (
+          {authenticatedCustomerId ? (
             <>
-              <span className="text-sm text-muted-foreground">
-                Welcome, {customer.name}
+              <Avatar className="h-8 w-8">
+                <AvatarFallback>
+                  {externalCustomerId?.substring(0, 2).toUpperCase() 
+                    || authenticatedCustomerId.substring(0, 2).toUpperCase() 
+                    || '??'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm text-muted-foreground" title={authenticatedCustomerId}>
+                 {externalCustomerId || `User: ${authenticatedCustomerId.substring(0, 6)}...`}
               </span>
-              <Button variant="secondary" onClick={goToDashboard}>
-                Dashboard
-              </Button>
-              {/* Use the same handleLogout function */}
-              <Button variant="outline" onClick={handleLogout}>
-                Logout
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                Sign Out
               </Button>
             </>
-          )}
-          {isHomePage && !customer && (
-            <SignUpButton onClick={() => setIsRegistrationOpen(true)} />
-          )}
-          
-          {/* Dashboard Page: Show only Sign Out */}
-          {isDashboardPage && (
-            <Button variant="outline" onClick={handleLogout}>
-              Sign Out
-            </Button>
+          ) : (
+            isHomePage && (
+              <SignUpButton onClick={() => setIsRegistrationOpen(true)} />
+            )
           )}
         </div>
       </div>
       
-      {/* Keep registration dialog logic for homepage use */}
       <CustomerRegistrationDialog 
         isOpen={isRegistrationOpen}
         onClose={() => setIsRegistrationOpen(false)}

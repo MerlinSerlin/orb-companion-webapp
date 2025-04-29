@@ -5,82 +5,87 @@ import { Header } from "@/components/ui/header"
 import { PricingPlans } from "@/components/plans/pricing-plans"
 import { CustomerRegistrationDialog } from "@/components/dialogs/customer-registration-dialog"
 import { PlanSelectionDialog } from "@/components/dialogs/plan-selection-dialog"
-import { useCustomerStore } from "@/lib/store/customer-store"
+import { EnterpriseContactDialog } from "@/components/dialogs/enterprise-contact-dialog"
+import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
+
+// Define the possible dialog states
+type DialogMode = 'NONE' | 'REGISTRATION' | 'PLAN_SELECTION' | 'ENTERPRISE';
 
 export default function Home() {
-  const { customer, pendingPlanId, setPendingPlanId } = useCustomerStore()
-  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
-  const [isPlanSelectionOpen, setIsPlanSelectionOpen] = useState(false)
-  const [registrationWasSuccessful, setRegistrationWasSuccessful] = useState(false)
+  // --- Store State ---
+  const pendingPlanId = useCustomerStore((state: CustomerState) => state.pendingPlanId);
+  const setPendingPlanId = useCustomerStore((state: CustomerState) => state.setPendingPlanId);
+  const customerId = useCustomerStore((state: CustomerState) => state.customerId);
+  const setCustomerId = useCustomerStore((state: CustomerState) => state.setCustomerId);
 
-  // Effect to properly manage dialog opening states
-  useEffect(() => {
-    if (pendingPlanId && pendingPlanId !== "nimbus_scale_enterprise" && 
-        (customer || registrationWasSuccessful)) {
-      setIsRegistrationOpen(false);
-      setIsPlanSelectionOpen(true);
-    }
-    // Note: Enterprise dialog opening is handled within PricingPlans component
-  }, [customer, pendingPlanId, registrationWasSuccessful]);
+  // --- Component State ---
+  const [dialogMode, setDialogMode] = useState<DialogMode>('NONE');
 
-  // Handle edge case where plan selection dialog is open but no plan is selected
+  // New single effect to manage dialog mode
   useEffect(() => {
-    if (isPlanSelectionOpen && !pendingPlanId) {
-      setIsPlanSelectionOpen(false);
+    console.log('[Dialog Effect] Checking:', { pendingPlanId, customerId });
+    if (!pendingPlanId) {
+      setDialogMode('NONE'); // No plan selected, no dialog
+      return;
     }
-  }, [isPlanSelectionOpen, pendingPlanId]);
+
+    if (pendingPlanId === 'nimbus_scale_enterprise') {
+      // Enterprise plan selected
+      if (customerId) {
+        console.log('[Dialog Effect] Setting mode: ENTERPRISE');
+        setDialogMode('ENTERPRISE');
+      } else {
+        console.log('[Dialog Effect] Setting mode: REGISTRATION (for Enterprise)');
+        setDialogMode('REGISTRATION');
+      }
+    } else {
+      // Non-enterprise plan selected
+      if (customerId) {
+        console.log('[Dialog Effect] Setting mode: PLAN_SELECTION');
+        setDialogMode('PLAN_SELECTION');
+      } else {
+        console.log('[Dialog Effect] Setting mode: REGISTRATION (for Non-Enterprise)');
+        setDialogMode('REGISTRATION');
+      }
+    }
+  }, [pendingPlanId, customerId]); // Effect runs when plan or auth status changes
 
   // --- Dialog Control --- 
 
-  const openRegistration = () => {
-    setIsPlanSelectionOpen(false);
-    setRegistrationWasSuccessful(false); // Reset flag when opening registration
-    setIsRegistrationOpen(true)
-  }
-  
+  // closeRegistration: Just clear pendingPlanId if cancelled before customer creation
   const closeRegistration = () => {
-    // Only clear the pending plan ID if registration was NOT successful
-    if (pendingPlanId && !registrationWasSuccessful) {
-      console.log('Registration closed/cancelled, clearing pending plan ID:', pendingPlanId);
-      setPendingPlanId(null)
+    if (!customerId) { 
+      console.log('Registration Dialog closed/cancelled before customer creation, clearing pending ID.');
+      setPendingPlanId(null); // This will trigger effect to set mode to NONE
     }
-    
-    setIsRegistrationOpen(false)
-    // Reset flag *after* check, ready for next open
-    setRegistrationWasSuccessful(false); 
+    // If customerId exists, handleRegistrationSuccess will be called instead, 
+    // which will also clear the dialog via the effect.
+    // No need to call setDialogMode('NONE') here.
   }
 
-  // Handler to be called on successful registration
-  const handleRegistrationSuccess = () => {
-    console.log('Registration successful, setting flag.');
-    setRegistrationWasSuccessful(true);
+  // handleRegistrationSuccess: Set customerId, the effect will handle the next dialog or closing
+  const handleRegistrationSuccess = (createdCustomerId: string) => {
+    console.log('Registration successful, setting customer ID.');
+    setCustomerId(createdCustomerId);
+    // Effect will determine next mode
   }
 
-  // Create a function to force a specific plan ID when opening the plan selection dialog
-  const forcePlanSelection = (planId: string | null) => {
-    if (!planId) return;
-    setPendingPlanId(planId);
-    setIsRegistrationOpen(false);
-    setIsPlanSelectionOpen(true);
-  }
-  
-  // This function is triggered *after* registration was successful (for non-enterprise)
-  // It now mainly just calls forcePlanSelection if needed
-  const openPlanSelection = () => {
-    // Flag is already set by handleRegistrationSuccess
-    if (pendingPlanId && pendingPlanId !== "nimbus_scale_enterprise") {
-      forcePlanSelection(pendingPlanId);
-    }
-    // If it *is* enterprise, do nothing here; PricingPlans effect handles it
-  }
-
+  // closePlanSelection: Clear pendingPlanId
   const closePlanSelection = () => {
-    setIsPlanSelectionOpen(false)
+    // setDialogMode('NONE'); // <-- Remove: Effect will handle closing
+    setPendingPlanId(null); 
   }
 
-  // Function to handle successful subscription (from PlanSelectionDialog)
+  // Add handler to close enterprise dialog: Clear pendingPlanId
+  const closeEnterpriseDialog = () => {
+    // setDialogMode('NONE'); // <-- Remove: Effect will handle closing
+    setPendingPlanId(null);
+  }
+
+  // handleSuccessfulSubscription: Clear pendingPlanId via closePlanSelection
   const handleSuccessfulSubscription = () => {
-    // pendingPlanId is already cleared by addSubscription in the store
+    // pendingPlanId is likely already cleared by the subscription action,
+    // but calling closePlanSelection ensures the state is consistent.
     closePlanSelection();
   }
 
@@ -88,18 +93,26 @@ export default function Home() {
     <>
       <Header />
       <main>
-        <PricingPlans openRegistration={openRegistration} />
+        <PricingPlans />
       </main>
       <CustomerRegistrationDialog 
-        onOpenPlanSelection={openPlanSelection} // Still needed for non-enterprise flow
-        onRegistrationSuccess={handleRegistrationSuccess} // Pass the success handler
-        isOpen={isRegistrationOpen}
+        onRegistrationSuccess={handleRegistrationSuccess}
+        isOpen={dialogMode === 'REGISTRATION'}
         onClose={closeRegistration}
       />
       <PlanSelectionDialog 
-        isOpen={isPlanSelectionOpen}
+        customerId={customerId || ""}
+        isOpen={dialogMode === 'PLAN_SELECTION'}
         onClose={closePlanSelection}
         onSubscriptionSuccess={handleSuccessfulSubscription}
+      />
+      <EnterpriseContactDialog
+        open={dialogMode === 'ENTERPRISE'}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeEnterpriseDialog();
+          }
+        }}
       />
     </>
   )

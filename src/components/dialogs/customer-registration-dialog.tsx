@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { createCustomer } from "@/app/actions"
-import { useCustomerStore } from "@/lib/store/customer-store" 
+import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import {
   Dialog,
   DialogContent,
@@ -14,32 +14,29 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FormField } from "@/components/ui/form-field"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 
 interface CustomerRegistrationDialogProps {
-  onOpenPlanSelection?: () => void
-  onRegistrationSuccess: () => void
+  onRegistrationSuccess: (customerId: string) => void
   isOpen: boolean
   onClose: () => void
 }
 
 export function CustomerRegistrationDialog({ 
-  onOpenPlanSelection,
   onRegistrationSuccess,
   isOpen,
   onClose,
 }: CustomerRegistrationDialogProps) {
-  const { 
-    setCustomer,
-    pendingPlanId
-  } = useCustomerStore()
-
   const [formData, setFormData] = useState({
     name: "",
     email: ""
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const setCustomerId = useCustomerStore((state: CustomerState) => state.setCustomerId);
+  const setExternalCustomerId = useCustomerStore((state: CustomerState) => state.setExternalCustomerId);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -57,47 +54,35 @@ export function CustomerRegistrationDialog({
       return
     }
 
+    console.log("Registration form submitted:", formData);
     setIsSubmitting(true)
 
     try {
-      const selectedPlanId = pendingPlanId;
-      
-      const customerResult = await createCustomer(formData.name, formData.email)
+      const result = await createCustomer(formData.name, formData.email)
+      console.log("createCustomer result:", result);
 
-      if (!customerResult.success || !customerResult.customerId) {
-        throw new Error(customerResult.error || "Failed to create customer or missing ID")
+      if (!result.success || !result.customerId || !result.externalCustomerId) {
+        throw new Error(result.error || "Failed to create customer or missing necessary IDs.")
       }
 
-      const newCustomer = {
-        id: customerResult.customerId,
-        name: formData.name,
-        email: formData.email,
-        subscriptions: []
-      }
-      setCustomer(newCustomer)
-
-      toast.success("Account created successfully!", {
-        description: `Welcome to NimbusScale, ${formData.name}! You can now select a plan.`,
-        icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
-        duration: 5000,
+      toast.success("Registration successful!", {
+        description: "You can now proceed.",
+        duration: 3000,
       })
 
-      onRegistrationSuccess();
+      setCustomerId(result.customerId);
+      setExternalCustomerId(result.externalCustomerId);
+
+      if (onRegistrationSuccess) {
+        onRegistrationSuccess(result.customerId);
+      }
 
       setFormData({ name: "", email: "" });
 
-      onClose();
-
-      if (selectedPlanId && selectedPlanId !== "nimbus_scale_enterprise" && onOpenPlanSelection) {
-        console.log("Non-enterprise plan selected, calling onOpenPlanSelection shortly...")
-        setTimeout(() => {
-          onOpenPlanSelection();
-        }, 100); 
-      }
-
     } catch (error) {
-      toast.error("Error creating account", {
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+      console.error("Registration Error:", error);
+      toast.error("Registration Failed", {
+        description: error instanceof Error ? error.message : "An unknown error occurred.",
         duration: 5000,
       })
     } finally {
@@ -108,7 +93,7 @@ export function CustomerRegistrationDialog({
   const apiRequestBody = {
     email: formData.email || "customer@example.com",
     name: formData.name || "Example Customer",
-    external_customer_id: formData.name.replace(/\s+/g, '_') || "example_customer",
+    external_customer_id: formData.name.trim().replace(/\s+/g, '_') || "example_customer",
   }
 
   const sampleResponse = {
@@ -131,38 +116,36 @@ export function CustomerRegistrationDialog({
     >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create Your Account</DialogTitle>
-          <DialogDescription>Enter your information to get started with NimbusScale.</DialogDescription>
+          <DialogTitle>Register Account</DialogTitle>
+          <DialogDescription>Enter your information to get started.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <FormField
-              id="name"
-              name="name"
-              label="Name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Enter your name"
-              disabled={isSubmitting}
-              required
-              gridClassName="grid gap-2"
-              labelClassName=""
-              inputClassName=""
-            />
-            <FormField
-              id="email"
-              name="email"
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Enter your email"
-              disabled={isSubmitting}
-              required
-              gridClassName="grid gap-2"
-              labelClassName=""
-              inputClassName=""
-            />
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">Name</Label>
+              <Input 
+                id="name" 
+                name="name" 
+                value={formData.name} 
+                onChange={handleChange} 
+                className="col-span-3" 
+                placeholder="Your Name"
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">Email</Label>
+              <Input 
+                id="email" 
+                name="email" 
+                type="email" 
+                value={formData.email} 
+                onChange={handleChange} 
+                className="col-span-3" 
+                placeholder="marshall@withorb.com"
+                disabled={isSubmitting}
+              />
+            </div>
 
             <div className="flex items-center justify-between mt-2">
               <ApiPreviewDialog
@@ -170,21 +153,22 @@ export function CustomerRegistrationDialog({
                 response={sampleResponse}
                 endpoint="https://api.withorb.com/v1/customers"
                 method="POST"
-                title="Create Orb Customer"
-                description="This API call will create a new customer in Orb with the information provided."
+                title="Create Customer"
+                description="This API call will create a new customer in Orb."
                 buttonText="Preview API Call"
               />
             </div>
           </div>
           <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Account...
+                  Registering...
                 </>
               ) : (
-                "Create Account"
+                "Register"
               )}
             </Button>
           </DialogFooter>

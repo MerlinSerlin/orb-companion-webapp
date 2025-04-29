@@ -1,17 +1,25 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware'
-import type { 
-  CustomerState, 
-  Subscription,
-  PersistedState 
-} from "@/lib/types"; // Import all needed types
 
-const initialState: Omit<CustomerState, 'setCustomer' | 'addSubscription' | 'updateSubscription' | 'removeSubscription' | 'setPendingPlanId' | 'reset'> = {
-  customer: null,
+export type PersistedCustomerState = {
+  pendingPlanId: string | null;
+  customerId: string | null; // Internal Orb ID (cus_...)
+  externalCustomerId: string | null; // User-friendly ID (e.g., john_doe)
+}
+
+export interface CustomerState extends PersistedCustomerState {
+  setPendingPlanId: (planId: string | null) => void;
+  setCustomerId: (id: string | null) => void;
+  setExternalCustomerId: (id: string | null) => void;
+  reset: () => void;
+}
+
+const initialState: PersistedCustomerState = {
   pendingPlanId: null,
+  customerId: null,
+  externalCustomerId: null,
 };
 
-// Mock storage for SSR
 const mockStorage: StateStorage = {
   getItem: () => null,
   setItem: () => {},
@@ -20,54 +28,11 @@ const mockStorage: StateStorage = {
 
 export const useCustomerStore = create<CustomerState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       ...initialState,
-      setCustomer: (customer) => set({
-        customer: customer ? {
-          ...customer,
-          // Ensure subscriptions is always an array
-          subscriptions: customer.subscriptions || []
-        } : null
-      }),
-      // Ensure method signatures use Subscription
-      addSubscription: (subscription: Subscription) => {
-        const { customer } = get();
-        if (customer) {
-          set({
-            customer: {
-              ...customer,
-              subscriptions: [...customer.subscriptions, subscription]
-            },
-            pendingPlanId: null // Reset pendingPlanId after successful subscription
-          });
-        }
-      },
-      updateSubscription: (subscriptionId: string, updatedFields: Partial<Subscription>) => {
-        const { customer } = get();
-        if (customer) {
-          const updatedSubscriptions = customer.subscriptions.map(sub =>
-            sub.id === subscriptionId ? { ...sub, ...updatedFields } : sub
-          );
-          set({
-            customer: {
-              ...customer,
-              subscriptions: updatedSubscriptions
-            }
-          });
-        }
-      },
-      removeSubscription: (subscriptionId: string) => {
-        const { customer } = get();
-        if (customer) {
-          set({
-            customer: {
-              ...customer,
-              subscriptions: customer.subscriptions.filter(sub => sub.id !== subscriptionId)
-            }
-          });
-        }
-      },
       setPendingPlanId: (planId: string | null) => set({ pendingPlanId: planId }),
+      setCustomerId: (id: string | null) => set({ customerId: id }),
+      setExternalCustomerId: (id: string | null) => set({ externalCustomerId: id }),
       reset: () => set(initialState),
     }),
     {
@@ -75,8 +40,10 @@ export const useCustomerStore = create<CustomerState>()(
       storage: createJSONStorage(() =>
         typeof window !== 'undefined' ? localStorage : mockStorage
       ),
-      partialize: (state): PersistedState => ({
-        customer: state.customer
+      partialize: (state): PersistedCustomerState => ({ 
+        pendingPlanId: state.pendingPlanId,
+        customerId: state.customerId,
+        externalCustomerId: state.externalCustomerId
       }),
     }
   )
