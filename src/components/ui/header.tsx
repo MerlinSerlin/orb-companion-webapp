@@ -15,14 +15,11 @@ export function Header() {
   const resetZustand = useCustomerStore((state: CustomerState) => state.reset)
   const customerId = useCustomerStore((state: CustomerState) => state.customerId);
   const externalCustomerId = useCustomerStore((state: CustomerState) => state.externalCustomerId);
-  const customerState = useCustomerStore();
   
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   
   const handleSignOut = () => {
-    
     resetZustand();
-    console.log('Context reset called. Current state snapshot:', useCustomerStore.getState());
     router.push('/');
   }
 
