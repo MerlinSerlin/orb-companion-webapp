@@ -13,36 +13,44 @@ export function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const resetZustand = useCustomerStore((state: CustomerState) => state.reset)
-  const authenticatedCustomerId = useCustomerStore((state: CustomerState) => state.customerId);
+  const customerId = useCustomerStore((state: CustomerState) => state.customerId);
   const externalCustomerId = useCustomerStore((state: CustomerState) => state.externalCustomerId);
+  const customerState = useCustomerStore();
   
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   
-  const handleLogout = () => {
-    resetZustand() 
-    router.push('/')
+  const handleClearContext = () => {
+    console.log('Clearing context... Current state:', customerState);
+    resetZustand();
+    console.log('Context reset called. Current state snapshot:', useCustomerStore.getState());
+    setTimeout(() => {
+        console.log('Navigating home after delay...');
+        router.push('/');
+    }, 100);
   }
 
   const isHomePage = pathname === '/'
+
+  const hasActiveContext = !!customerId;
 
   return (
     <header className="border-b">
       <div className="container mx-auto flex h-16 items-center justify-between">
         <Logo />
         <div className="flex items-center gap-4">
-          {authenticatedCustomerId ? (
+          {hasActiveContext ? (
             <>
               <Avatar className="h-8 w-8">
                 <AvatarFallback>
                   {externalCustomerId?.substring(0, 2).toUpperCase() 
-                    || authenticatedCustomerId.substring(0, 2).toUpperCase() 
+                    || customerId?.substring(0, 2).toUpperCase()
                     || '??'}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm text-muted-foreground" title={authenticatedCustomerId}>
-                 {externalCustomerId || `User: ${authenticatedCustomerId.substring(0, 6)}...`}
+              <span className="text-sm text-muted-foreground" title={customerId || 'No Internal ID'}>
+                 {externalCustomerId || (customerId ? `ID: ${customerId.substring(0, 6)}...` : 'Context Active')}
               </span>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
+              <Button variant="outline" size="sm" onClick={handleClearContext}>
                 Sign Out
               </Button>
             </>
@@ -57,7 +65,7 @@ export function Header() {
       <CustomerRegistrationDialog 
         isOpen={isRegistrationOpen}
         onClose={() => setIsRegistrationOpen(false)}
-        onRegistrationSuccess={() => {
+        onRegistrationSuccess={(createdInternalId) => {
           setIsRegistrationOpen(false); 
         }}
       />
