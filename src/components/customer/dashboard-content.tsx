@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery } from '@tanstack/react-query'
 import { useCustomerStore } from "@/lib/store/customer-store"
@@ -20,13 +20,6 @@ import { PLAN_DETAILS } from "@/components/plans/plan-data";
 // Exporting the type for use in the server component page
 export type { Subscription };
 
-// Use the Feature type from PLAN_DETAILS if possible, or redefine if needed
-// Assuming PLAN_DETAILS features have { name: string; value: string; ...? }
-interface DisplayFeature {
-  name: string;
-  value: string;
-}
-
 interface CustomerDashboardContentProps {
   customerId: string; // ID from URL Prop
 }
@@ -34,10 +27,6 @@ interface CustomerDashboardContentProps {
 export function CustomerDashboardContent({ customerId: customerIdProp }: CustomerDashboardContentProps) {
   const router = useRouter()
   
-  // Remove useState for derived state
-  // const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null)
-  // const [features, setFeatures] = useState<DisplayFeature[]>([])
-
   // --- React Query Hooks --- (Customer Details defined before useEffect)
   const { 
     data: customerDetails, 
