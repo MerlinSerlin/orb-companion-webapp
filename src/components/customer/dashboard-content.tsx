@@ -2,27 +2,20 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-// Import useQuery
 import { useQuery } from '@tanstack/react-query'
-// Removed Zustand import as it's no longer needed for auth check here
-// import { useCustomerStore } from "@/lib/store/customer-store"
+import { useCustomerStore } from "@/lib/store/customer-store"
+import { getCustomerDetails } from "@/app/actions"
 import { Header } from "@/components/ui/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-// import { Progress } from "@/components/ui/progress"
-// import { Separator } from "@/components/ui/separator"; // Removed unused import
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-// import { Skeleton } from "@/components/ui/skeleton"; // Removed unused import
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-// import { InfoIcon } from "lucide-react"
 import { CheckCircle2, AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types"; // Import renamed Subscription
-// Import PLAN_DETAILS
 import { PLAN_DETAILS } from "@/components/plans/plan-data";
-// Import the server action (though useQuery won't call it directly here)
-// import { getCustomerSubscriptions } from "@/app/actions"
+
 
 // Exporting the type for use in the server component page
 export type { Subscription };
@@ -35,28 +28,71 @@ interface DisplayFeature {
 }
 
 interface CustomerDashboardContentProps {
-  customerId: string; // Only need customerId for query key
-  // REMOVED externalCustomerId and initialSubscriptions
+  customerId: string; // ID from URL Prop
 }
 
-export function CustomerDashboardContent({ customerId }: CustomerDashboardContentProps) {
+export function CustomerDashboardContent({ customerId: customerIdProp }: CustomerDashboardContentProps) {
   const router = useRouter()
-  // Removed customer state access
-  // const { customer } = useCustomerStore()
+  // Remove unused store selectors
+  // const storeCustomerId = useCustomerStore((state: CustomerState) => state.customerId);
+  // const setStoreCustomerId = useCustomerStore((state: CustomerState) => state.setCustomerId);
+  // const setStoreExternalCustomerId = useCustomerStore((state: CustomerState) => state.setExternalCustomerId);
+  
   const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null)
   const [features, setFeatures] = useState<DisplayFeature[]>([])
-  // Removed isHydrated state
-  // const [isHydrated, setIsHydrated] = useState(false)
 
-  // Fetch subscriptions using useQuery
+  // Effect to sync Zustand store context with URL customerId
+  useEffect(() => {
+    let isMounted = true; // Flag to track component mount status
+    // Get store state directly inside the effect to avoid dependency loop
+    const currentStoreState = useCustomerStore.getState();
+    const currentStoreCustomerId = currentStoreState.customerId;
+    
+    console.log('[Dashboard Context Sync] Effect triggered. URL ID:', customerIdProp);
+
+    // Only fetch if URL ID is present AND it's different from the *current* store ID
+    if (customerIdProp && customerIdProp !== currentStoreCustomerId) {
+      console.log(`[Dashboard Context Sync] URL ID (${customerIdProp}) differs from store ID (${currentStoreCustomerId}). Fetching details...`);
+      const fetchAndSetContext = async () => {
+        try {
+          const result = await getCustomerDetails(customerIdProp);
+          console.log('[Dashboard Context Sync] Fetched details result:', result);
+          
+          if (isMounted) { 
+            if (result.success && result.customer) {
+              console.log(`[Dashboard Context Sync] (Mounted) Setting store context: ID=${result.customer.id}, ExternalID=${result.customer.external_customer_id}`);
+              // Use setters from the state obtained via getState()
+              currentStoreState.setCustomerId(result.customer.id);
+              currentStoreState.setExternalCustomerId(result.customer.external_customer_id);
+            } else {
+              console.error(`[Dashboard Context Sync] (Mounted) Failed to fetch details for ${customerIdProp}:`, result.error);
+            }
+          } else {
+             console.log('[Dashboard Context Sync] (Unmounted) Fetch completed, but component unmounted. Skipping store update.');
+          }
+        } catch (error) {
+            if (isMounted) {
+                console.error(`[Dashboard Context Sync] (Mounted) Error during fetch for ${customerIdProp}:`, error);
+            }
+        }
+      };
+      fetchAndSetContext();
+    }
+    
+    return () => {
+      console.log('[Dashboard Context Sync] Cleanup: Component unmounting or URL prop changing.');
+      isMounted = false;
+    };
+  // Only depend on the ID from the URL prop
+  }, [customerIdProp]); 
+
+  // Fetch subscriptions using useQuery (using customerIdProp from URL)
   const { data: subscriptions, isLoading: isLoadingSubscriptions, error: subscriptionsError } = useQuery<Subscription[], Error>({
-    // Use the same query key as in the server page prefetch
-    queryKey: ['subscriptions', customerId],
-    // queryFn is technically required, but data should be hydrated from the server.
-    // Provide a dummy function or refetch logic if needed for client-side updates.
-    queryFn: () => Promise.resolve([]), // Example: won't actually run on initial load if hydrated
-    staleTime: Infinity, // Keep server-fetched data fresh
+    queryKey: ['subscriptions', customerIdProp],
+    queryFn: () => Promise.resolve([]), 
+    staleTime: Infinity, 
   });
+
   // Effect to process subscriptions data once fetched by useQuery
   useEffect(() => {
     // Check if data is loaded and not errored
@@ -165,7 +201,7 @@ export function CustomerDashboardContent({ customerId }: CustomerDashboardConten
               <CardTitle>No Subscriptions Found</CardTitle>
               <CardDescription>
                 {/* Display internal ID from prop since external ID isn't here anymore */}
-                Customer {customerId} doesn&apos;t have any active subscriptions yet.
+                Customer {customerIdProp} doesn&apos;t have any active subscriptions yet.
               </CardDescription>
             </CardHeader>
             <CardFooter>
@@ -197,7 +233,7 @@ export function CustomerDashboardContent({ customerId }: CustomerDashboardConten
                     </CardTitle>
                     <CardDescription>
                       {/* Display internal ID from prop */}
-                      Information about the primary subscription for {customerId}
+                      Information about the primary subscription for {customerIdProp}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

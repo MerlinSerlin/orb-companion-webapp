@@ -33,7 +33,13 @@ export const useCustomerStore = create<CustomerState>()(
       setPendingPlanId: (planId: string | null) => set({ pendingPlanId: planId }),
       setCustomerId: (id: string | null) => set({ customerId: id }),
       setExternalCustomerId: (id: string | null) => set({ externalCustomerId: id }),
-      reset: () => set(initialState),
+      reset: () => {
+        console.log('[Store Reset] Setting state to initial and clearing storage...');
+        set(initialState);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('customer-storage');
+        }
+      },
     }),
     {
       name: 'customer-storage',
