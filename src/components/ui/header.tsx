@@ -20,13 +20,10 @@ export function Header() {
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   
   const handleSignOut = () => {
-    console.log('Clearing context... Current state:', customerState);
+    
     resetZustand();
     console.log('Context reset called. Current state snapshot:', useCustomerStore.getState());
-    setTimeout(() => {
-        console.log('Navigating home after delay...');
-        router.push('/');
-    }, 100);
+    router.push('/');
   }
 
   const isHomePage = pathname === '/'

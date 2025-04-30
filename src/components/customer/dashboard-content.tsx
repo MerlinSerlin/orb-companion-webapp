@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery } from '@tanstack/react-query'
-import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
+import { useCustomerStore } from "@/lib/store/customer-store"
 import { getCustomerDetails } from "@/app/actions"
 import { Header } from "@/components/ui/header"
 import { Button } from "@/components/ui/button"
