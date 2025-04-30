@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery } from '@tanstack/react-query'
 import { useCustomerStore } from "@/lib/store/customer-store"
@@ -13,19 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { CheckCircle2, AlertCircle } from "lucide-react"
-import type { Subscription } from "@/lib/types"; // Import renamed Subscription
+import type { Subscription, CustomerDetails } from "@/lib/types";
 import { PLAN_DETAILS } from "@/components/plans/plan-data";
 
 
 // Exporting the type for use in the server component page
 export type { Subscription };
-
-// Use the Feature type from PLAN_DETAILS if possible, or redefine if needed
-// Assuming PLAN_DETAILS features have { name: string; value: string; ...? }
-interface DisplayFeature {
-  name: string;
-  value: string;
-}
 
 interface CustomerDashboardContentProps {
   customerId: string; // ID from URL Prop
@@ -33,116 +26,84 @@ interface CustomerDashboardContentProps {
 
 export function CustomerDashboardContent({ customerId: customerIdProp }: CustomerDashboardContentProps) {
   const router = useRouter()
-  // Remove unused store selectors
-  // const storeCustomerId = useCustomerStore((state: CustomerState) => state.customerId);
-  // const setStoreCustomerId = useCustomerStore((state: CustomerState) => state.setCustomerId);
-  // const setStoreExternalCustomerId = useCustomerStore((state: CustomerState) => state.setExternalCustomerId);
   
-  const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null)
-  const [features, setFeatures] = useState<DisplayFeature[]>([])
-
-  // Effect to sync Zustand store context with URL customerId
-  useEffect(() => {
-    let isMounted = true; // Flag to track component mount status
-    // Get store state directly inside the effect to avoid dependency loop
-    const currentStoreState = useCustomerStore.getState();
-    const currentStoreCustomerId = currentStoreState.customerId;
-    
-    console.log('[Dashboard Context Sync] Effect triggered. URL ID:', customerIdProp);
-
-    // Only fetch if URL ID is present AND it's different from the *current* store ID
-    if (customerIdProp && customerIdProp !== currentStoreCustomerId) {
-      console.log(`[Dashboard Context Sync] URL ID (${customerIdProp}) differs from store ID (${currentStoreCustomerId}). Fetching details...`);
-      const fetchAndSetContext = async () => {
-        try {
-          const result = await getCustomerDetails(customerIdProp);
-          console.log('[Dashboard Context Sync] Fetched details result:', result);
-          
-          if (isMounted) { 
-            if (result.success && result.customer) {
-              console.log(`[Dashboard Context Sync] (Mounted) Setting store context: ID=${result.customer.id}, ExternalID=${result.customer.external_customer_id}`);
-              // Use setters from the state obtained via getState()
-              currentStoreState.setCustomerId(result.customer.id);
-              currentStoreState.setExternalCustomerId(result.customer.external_customer_id);
-            } else {
-              console.error(`[Dashboard Context Sync] (Mounted) Failed to fetch details for ${customerIdProp}:`, result.error);
-            }
-          } else {
-             console.log('[Dashboard Context Sync] (Unmounted) Fetch completed, but component unmounted. Skipping store update.');
-          }
-        } catch (error) {
-            if (isMounted) {
-                console.error(`[Dashboard Context Sync] (Mounted) Error during fetch for ${customerIdProp}:`, error);
-            }
-        }
-      };
-      fetchAndSetContext();
-    }
-    
-    return () => {
-      console.log('[Dashboard Context Sync] Cleanup: Component unmounting or URL prop changing.');
-      isMounted = false;
-    };
-  // Only depend on the ID from the URL prop
-  }, [customerIdProp]); 
-
-  // Fetch subscriptions using useQuery (using customerIdProp from URL)
-  const { data: subscriptions, isLoading: isLoadingSubscriptions, error: subscriptionsError } = useQuery<Subscription[], Error>({
-    queryKey: ['subscriptions', customerIdProp],
-    queryFn: () => Promise.resolve([]), 
+  // --- React Query Hooks --- (Customer Details defined before useEffect)
+  const { 
+    data: customerDetails, 
+    error: customerDetailsError 
+  } = useQuery<CustomerDetails | null, Error>({
+    queryKey: ['customer', customerIdProp],
+    queryFn: async () => {
+      // console.warn('Client-side customer details fetch executed...'); // Optional log
+      const result = await getCustomerDetails(customerIdProp); 
+      if (!result.success || !result.customer) { 
+        console.error('Failed to fetch customer details in queryFn:', result.error);
+        return null;
+      }
+      return result.customer; 
+    },
     staleTime: Infinity, 
+    enabled: !!customerIdProp
   });
 
-  // Effect to process subscriptions data once fetched by useQuery
+  // Effect to sync Zustand store context using the result of the customer details query
   useEffect(() => {
-    // Check if data is loaded and not errored
-    if (subscriptions && subscriptions.length > 0) { 
-      const active = subscriptions.find(sub => sub.status === "active")
-      const currentSub = active || subscriptions[0]
-      setActiveSubscription(currentSub)
+    // Get store state directly inside the effect
+    const { customerId: currentStoreCustomerId, setCustomerId, setExternalCustomerId } = useCustomerStore.getState();
+    
+    console.log('[Dashboard Context Sync] Effect triggered. Fetched Details:', customerDetails);
 
-      if (currentSub) {
-        const matchingPlan = PLAN_DETAILS.find(plan => plan.plan_id === currentSub.plan_id);
-        setFeatures(matchingPlan?.features || []); 
-      } else {
-        setFeatures([]);
-      }
-    } else if (subscriptions) { // Data loaded, but empty array
-      setActiveSubscription(null)
-      setFeatures([])
-    } 
-    // Handle loading/error states outside useEffect if preferred
-  }, [subscriptions]) // Depend on the data from useQuery
+    // Check if query has successfully fetched data AND if the fetched ID differs from the store ID
+    if (customerDetails && customerDetails.id !== currentStoreCustomerId) {
+      console.log(`[Dashboard Context Sync] Fetched customer ID (${customerDetails.id}) differs from store ID (${currentStoreCustomerId}). Updating store.`);
+      setCustomerId(customerDetails.id);
+      setExternalCustomerId(customerDetails.external_customer_id);
+    }
+    // No fetch needed here anymore, query hook handles it.
+    // No cleanup needed for fetch, but effect still runs on dependency change.
 
-  // Removed the redirect logic effect based on customer/hydration
-  // useEffect(() => {
-  //   if (!isHydrated) return
-  //   
-  //   if (!customer) {
-  //     const timer = setTimeout(() => {
-  //       router.push("/")
-  //     }, 500)
-  //     return () => clearTimeout(timer)
-  //   } else if (customer.id !== customerId) {
-  //     router.push("/")
-  //   }
-  // }, [customer, customerId, router, isHydrated])
+  // Depend on the fetched customerDetails object
+  }, [customerDetails]); 
+
+  // --- Subscriptions Query ---
+  const { 
+    data: subscriptions, 
+    error: subscriptionsError 
+  } = useQuery<Subscription[], Error>({
+    queryKey: ['subscriptions', customerIdProp],
+    queryFn: async () => { 
+        // console.warn('Client-side subscription fetch executed...'); // Optional log
+        // For now, assume hydration or handle client fetch if necessary
+        return []; 
+    },
+    staleTime: 5 * 60 * 1000, 
+    enabled: !!customerIdProp
+  });
+
+  // --- Calculate derived state directly during render ---
+  const activeSubscription = useMemo(() => {
+    if (!subscriptions || subscriptions.length === 0) return null;
+    return subscriptions.find(sub => sub.status === "active") || subscriptions[0];
+  }, [subscriptions]);
+
+  const features = useMemo(() => {
+    if (!activeSubscription) return [];
+    const matchingPlan = PLAN_DETAILS.find(plan => plan.plan_id === activeSubscription.plan_id);
+    return matchingPlan?.features || [];
+  }, [activeSubscription]);
 
   // --- Render Logic --- 
 
-  if (isLoadingSubscriptions) {
-    // Can use the skeleton from the server component or a simpler one here
-    return <div className="p-8 text-center">Loading dashboard content...</div>;
-  }
-
-  if (subscriptionsError) {
+  // Handle combined errors (simplified example)
+  const combinedError = subscriptionsError || customerDetailsError;
+  if (combinedError) {
     return (
       <div className="container mx-auto p-8">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Error Loading Dashboard</AlertTitle>
           <AlertDescription>
-            Failed to load subscription data: {subscriptionsError.message}
+            {combinedError.message}
           </AlertDescription>
         </Alert>
       </div>
@@ -175,23 +136,8 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            {/* REMOVED Back to Home Button */}
             <h1 className="text-3xl font-bold tracking-tight">Subscription Dashboard</h1>
-            {/* REMOVED description paragraph */}
-            {/* 
-            <p className="text-muted-foreground">
-              Manage your subscription and view your usage for Customer: {externalCustomerId}
-            </p>
-             */}
           </div>
-          {/* REMOVED badge container div */}
-          {/* 
-          <div className="flex items-center space-x-2">
-            <Badge variant="outline" className="text-sm">
-              Customer ID: {externalCustomerId}
-            </Badge>
-          </div>
-           */}
         </div>
         
         {/* Use fetched subscriptions data */}
