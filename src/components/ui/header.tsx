@@ -19,7 +19,7 @@ export function Header() {
   
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   
-  const handleClearContext = () => {
+  const handleSignOut = () => {
     console.log('Clearing context... Current state:', customerState);
     resetZustand();
     console.log('Context reset called. Current state snapshot:', useCustomerStore.getState());
@@ -50,7 +50,7 @@ export function Header() {
               <span className="text-sm text-muted-foreground" title={customerId || 'No Internal ID'}>
                  {externalCustomerId || (customerId ? `ID: ${customerId.substring(0, 6)}...` : 'Context Active')}
               </span>
-              <Button variant="outline" size="sm" onClick={handleClearContext}>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign Out
               </Button>
             </>
@@ -65,7 +65,7 @@ export function Header() {
       <CustomerRegistrationDialog 
         isOpen={isRegistrationOpen}
         onClose={() => setIsRegistrationOpen(false)}
-        onRegistrationSuccess={(createdInternalId) => {
+        onRegistrationSuccess={() => {
           setIsRegistrationOpen(false); 
         }}
       />

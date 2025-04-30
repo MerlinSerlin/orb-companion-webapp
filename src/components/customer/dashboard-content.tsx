@@ -2,30 +2,20 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-// Import useQuery
 import { useQuery } from '@tanstack/react-query'
-// Import customer store and action
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import { getCustomerDetails } from "@/app/actions"
-// Removed Zustand import as it's no longer needed for auth check here
-// import { useCustomerStore } from "@/lib/store/customer-store"
 import { Header } from "@/components/ui/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-// import { Progress } from "@/components/ui/progress"
-// import { Separator } from "@/components/ui/separator"; // Removed unused import
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-// import { Skeleton } from "@/components/ui/skeleton"; // Removed unused import
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-// import { InfoIcon } from "lucide-react"
 import { CheckCircle2, AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types"; // Import renamed Subscription
-// Import PLAN_DETAILS
 import { PLAN_DETAILS } from "@/components/plans/plan-data";
-// Import the server action (though useQuery won't call it directly here)
-// import { getCustomerSubscriptions } from "@/app/actions"
+
 
 // Exporting the type for use in the server component page
 export type { Subscription };
@@ -43,10 +33,10 @@ interface CustomerDashboardContentProps {
 
 export function CustomerDashboardContent({ customerId: customerIdProp }: CustomerDashboardContentProps) {
   const router = useRouter()
-  // Access customer store
-  const storeCustomerId = useCustomerStore((state: CustomerState) => state.customerId);
-  const setStoreCustomerId = useCustomerStore((state: CustomerState) => state.setCustomerId);
-  const setStoreExternalCustomerId = useCustomerStore((state: CustomerState) => state.setExternalCustomerId);
+  // Remove unused store selectors
+  // const storeCustomerId = useCustomerStore((state: CustomerState) => state.customerId);
+  // const setStoreCustomerId = useCustomerStore((state: CustomerState) => state.setCustomerId);
+  // const setStoreExternalCustomerId = useCustomerStore((state: CustomerState) => state.setExternalCustomerId);
   
   const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null)
   const [features, setFeatures] = useState<DisplayFeature[]>([])
