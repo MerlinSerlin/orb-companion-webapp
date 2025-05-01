@@ -16,6 +16,33 @@ import { CheckCircle2, AlertCircle } from "lucide-react"
 import type { Subscription, CustomerDetails } from "@/lib/types";
 import { PLAN_DETAILS } from "@/components/plans/plan-data";
 
+// Helper function to format large numbers
+const formatNumber = (num: number | string): string => {
+  const numericValue = typeof num === 'string' ? parseFloat(num) : num;
+  if (isNaN(numericValue)) return String(num); // Return original if not a number
+
+  if (numericValue >= 1e12) { // Trillions
+    return (numericValue / 1e12).toFixed(1).replace(/\.0$/, '') + 'T';
+  }
+  if (numericValue >= 1e9) { // Billions
+    return (numericValue / 1e9).toFixed(1).replace(/\.0$/, '') + 'G';
+  }
+  if (numericValue >= 1e6) { // Millions
+    return (numericValue / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  }
+  if (numericValue >= 1e3) { // Thousands
+    // Optional: Abbreviate thousands? e.g., 5000 -> 5K
+    // return (numericValue / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+    // Or keep them as is for clarity below millions
+    return numericValue.toLocaleString(); // Add commas for thousands
+  }
+  // For numbers less than 1000, return as is (or maybe format decimals if needed)
+  // Using toFixed(1) and removing .0 for consistency with abbreviations
+  if (numericValue % 1 !== 0) { // Check if it has decimals
+     return parseFloat(numericValue.toFixed(1)).toString(); // Format to 1 decimal place
+  }
+  return numericValue.toString();
+};
 
 // Exporting the type for use in the server component page
 export type { Subscription };
@@ -83,13 +110,144 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
   // --- Calculate derived state directly during render ---
   const activeSubscription = useMemo(() => {
     if (!subscriptions || subscriptions.length === 0) return null;
+    // Prioritize active, but might need logic for multiple active subs if possible
     return subscriptions.find(sub => sub.status === "active") || subscriptions[0];
   }, [subscriptions]);
 
+  // Derive features/entitlements from the active subscription's price intervals
   const features = useMemo(() => {
-    if (!activeSubscription) return [];
-    const matchingPlan = PLAN_DETAILS.find(plan => plan.plan_id === activeSubscription.plan_id);
-    return matchingPlan?.features || [];
+    if (!activeSubscription?.price_intervals) return [];
+
+    // Update structure to hold separate base and overage values
+    const entitlementFeatures: { name: string; baseValue: string; overageInfo?: string }[] = [];
+
+    activeSubscription.price_intervals.forEach(interval => {
+      const price = interval.price;
+      if (!price || !price.item || price.item.name === "Platform Fee") { 
+        return; // Skip Platform Fee
+      }
+
+      // --- Remove Debug Logging START ---
+      /*
+      if (price?.item?.name?.includes('Builds')) { // Log specifically for Builds/Concurrent Builds
+        console.log('[DEBUG] Processing Builds interval:', JSON.stringify(interval, null, 2));
+        // Log the specific fields used in the Unlimited check
+        if (price.price_type === 'usage_price' && price.model_type === 'tiered' && price.tiered_config?.tiers?.[0]) {
+          const firstTier = price.tiered_config.tiers[0];
+          console.log('[DEBUG] Builds First Tier Details:', {
+            last_unit: firstTier.last_unit,
+            first_unit: firstTier.first_unit,
+            unit_amount: firstTier.unit_amount,
+            isZeroCostCheck: firstTier.unit_amount == null || firstTier.unit_amount === '0' || firstTier.unit_amount === '0.00'
+          });
+        }
+      }
+      */
+      // --- Remove Debug Logging END ---
+
+      let baseValue = "Included"; // Default base value
+      let overageInfo: string | undefined = undefined; // Overage info
+      const currencySymbol = price.currency === 'USD' ? '$' : ''; 
+
+      if (price.price_type === 'fixed_price' && typeof price.fixed_price_quantity === 'number') {
+         // Apply formatting only if it's likely a large quantity, not something like 'concurrent builds = 1'
+         // Let's assume fixed quantities are typically small unless explicitly known otherwise
+         baseValue = formatNumber(price.fixed_price_quantity); // Apply formatting cautiously
+         // Check for overage tier for fixed price items too (like concurrent builds)
+         if (price.model_type === 'tiered' && price.tiered_config?.tiers && price.tiered_config.tiers.length > 1) {
+             const overageTier = price.tiered_config.tiers[1];
+             if (overageTier && overageTier.unit_amount && parseFloat(overageTier.unit_amount) > 0) {
+                // Determine unit if possible (might be just 'additional unit')
+                let perUnit = 'additional unit'; 
+                if (price.item.name.includes('Build')) perUnit = 'build';
+                // Format the overage amount as well
+                const formattedOverageAmount = parseFloat(overageTier.unit_amount).toFixed(2); // Ensure 2 decimal places for currency
+                overageInfo = `(then ${currencySymbol}${formattedOverageAmount}/${perUnit})`;
+             }
+         }
+      } else if (price.price_type === 'usage_price' && price.model_type === 'tiered' && price.tiered_config?.tiers) {
+         const tiers = price.tiered_config.tiers;
+         const firstTier = tiers[0];
+         
+         if (firstTier) { 
+             // Check for ZERO COST / UNLIMITED condition FIRST
+             const isZeroCost = firstTier.unit_amount == null || firstTier.unit_amount === '0' || firstTier.unit_amount === '0.00';
+             if (firstTier.last_unit === null && firstTier.first_unit === 0 && isZeroCost) { 
+                // Keep baseValue as default "Included" (or derive if necessary, but Included is likely correct)
+                overageInfo = 'Unlimited'; // Set the description/overage text to Unlimited
+             }
+             // Determine included amount from first tier (if not unlimited)
+             else if (firstTier.last_unit !== null && firstTier.last_unit !== undefined && firstTier.last_unit > 0) { 
+                const amount = firstTier.last_unit; // Use raw number for formatting
+                let unit = '';
+                if (price.item.name.includes('GB')) unit = ' GB';
+                if (price.item.name.includes('Minutes')) unit = ' minutes';
+                if (price.item.name.includes('Request')) unit = ' requests';
+                // Apply number formatting here
+                baseValue = `${formatNumber(amount)}${unit}`;
+             }
+             
+             // Determine overage from the next tier(s) ONLY IF NOT UNLIMITED
+             if (baseValue !== 'Unlimited' && tiers.length > 1) {
+                const overageTier = tiers[1];
+                if (overageTier && overageTier.unit_amount && parseFloat(overageTier.unit_amount) > 0) {
+                    let perUnit = '';
+                    if (price.item.name.includes('GB')) perUnit = 'GB';
+                    if (price.item.name.includes('Minutes')) perUnit = 'minute';
+                    if (price.item.name.includes('Request')) perUnit = 'request';
+                    // Format the overage amount (consider very small amounts)
+                    const overageAmount = parseFloat(overageTier.unit_amount);
+                    // Use standard decimal format for small fractions (< 0.01), toFixed(2) otherwise
+                    let formattedOverageAmount;
+                    if (overageAmount < 0.01 && overageAmount > 0) {
+                        formattedOverageAmount = overageAmount.toString(); // Use standard string representation for small decimals
+                        // Or potentially use toFixed() with more places if needed: e.g., overageAmount.toFixed(4)
+                    } else { // For amounts >= 0.01 or exactly 0
+                        formattedOverageAmount = overageAmount.toFixed(2); 
+                    }
+                    overageInfo = `(then ${currencySymbol}${formattedOverageAmount}${perUnit ? `/${perUnit}` : ''})`;
+                }
+             }
+         }
+      } 
+      // --- Add check for Unit-based Usage Price --- 
+      else if (price.price_type === 'usage_price' && price.model_type === 'unit') {
+         // Check if the unit price is zero, indicating unlimited usage for this model type
+         const unitAmount = price.unit_config?.unit_amount;
+         const isZeroCostUnit = unitAmount == null || unitAmount === '0' || unitAmount === '0.00';
+         if (isZeroCostUnit) {
+           // Keep baseValue as "Included"
+           overageInfo = 'Unlimited'; 
+         } else {
+           // Handle non-zero unit-based usage prices if necessary (e.g., display per-unit cost)
+           // For now, we assume non-zero unit prices might not appear or don't need special handling
+         }
+      } 
+      // --- End check for Unit-based Usage Price ---
+
+      const displayName = price.item.name.replace(/^Nimbus Scale\s+/, '');
+
+      entitlementFeatures.push({
+        name: displayName, 
+        baseValue: baseValue, // Store base value
+        overageInfo: overageInfo, // Store overage info (optional)
+      });
+    });
+
+    // Move "Concurrent Builds" to the end if it exists
+    const concurrentBuildsIndex = entitlementFeatures.findIndex(feat => feat.name === 'Concurrent Builds');
+    if (concurrentBuildsIndex > -1) {
+      // Remove the item from its current position
+      const [concurrentBuildsFeature] = entitlementFeatures.splice(concurrentBuildsIndex, 1);
+      // Add it to the end
+      entitlementFeatures.push(concurrentBuildsFeature);
+    }
+
+    // Optional: Sort remaining features alphabetically? (If desired)
+    // entitlementFeatures.sort((a, b) => a.name.localeCompare(b.name)); 
+
+    return entitlementFeatures;
+
   }, [activeSubscription]);
 
   // --- Render Logic --- 
@@ -134,12 +292,6 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
     <>
       <Header />
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Subscription Dashboard</h1>
-          </div>
-        </div>
-        
         {/* Use fetched subscriptions data */}
         {!subscriptions || subscriptions.length === 0 ? (
           <Card>
@@ -188,7 +340,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
                       <dl className="space-y-4 text-sm">
                         <div className="flex justify-between">
                           <dt className="font-medium text-gray-500">Plan Name</dt>
-                          <dd>{activeSubscription.planName || activeSubscription.plan_id}</dd>
+                          <dd>{activeSubscription.plan?.name || activeSubscription.plan?.id || 'N/A'}</dd>
                         </div>
                         <div className="flex justify-between">
                           <dt className="font-medium text-gray-500">Status</dt>
@@ -237,12 +389,19 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
                     {features.length > 0 ? (
                       <ul className="space-y-4">
                         {features.map((feature, index) => (
-                          <li key={index} className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                              <span>{feature.name}</span>
+                          <li key={index} className="flex items-start justify-between border-b pb-3 pt-1 last:border-b-0 text-sm">
+                            <div className="flex items-center pt-0.5">
+                              <CheckCircle2 className="mr-2 h-4 w-4 text-green-500 flex-shrink-0" />
+                              <span className="font-medium">{feature.name}</span>
                             </div>
-                            <Badge variant="secondary">{feature.value}</Badge>
+                            <div className="flex flex-col items-end text-right space-y-0.5">
+                              <span className="font-medium">{feature.baseValue}</span>
+                              {feature.overageInfo && (
+                                <span className="text-xs text-muted-foreground">
+                                  {feature.overageInfo}
+                                </span>
+                              )}
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -257,24 +416,22 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
             <TabsContent value="usage">
               <Card>
                 <CardHeader>
-                  <CardTitle>Usage</CardTitle>
+                  <CardTitle>Customer Portal</CardTitle>
                   <CardDescription>
-                    Overview of included features based on your plan.
-                    {/* Usage details are currently based on PLAN_DETAILS, not live data. */}
+                    Manage billing details and payment methods directly via the portal.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {features.length > 0 ? (
-                    features.map((feature, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{feature.name}</span>
-                          <span className="text-sm text-muted-foreground">{feature.value}</span>
-                        </div>
-                      </div>
-                    ))
+                <CardContent className="mt-4">
+                  {customerDetails?.portal_url ? (
+                    <iframe
+                      src={customerDetails.portal_url}
+                      title="Customer Portal"
+                      className="w-full h-[600px] border rounded-md"
+                    />
                   ) : (
-                    <p>No feature details available for this plan.</p>
+                    <div className="text-center text-muted-foreground py-8">
+                       Portal URL not available for this customer.
+                    </div>
                   )}
                 </CardContent>
               </Card>

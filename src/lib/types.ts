@@ -1,3 +1,6 @@
+import { create } from 'zustand'
+import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware'
+
 /**
  * Represents the structure of a subscription object
  * based on the expected response from the Orb API.
@@ -5,14 +8,14 @@
 export interface Subscription {
   id: string;
   name?: string | null;
-  plan_id: string;
-  planName?: string | null;
   currency?: string | null;
   status: 'active' | 'canceled' | 'ended' | 'pending' | 'upcoming';
   start_date?: string | null;
   end_date?: string | null;
   current_period_start?: string | null;
   current_period_end?: string | null;
+  plan?: Plan | null;
+  price_intervals?: PriceInterval[] | null;
 }
 
 /**
@@ -66,6 +69,7 @@ export interface CustomerDetails {
   external_customer_id: string | null;
   name: string;
   email: string;
+  portal_url?: string | null;
   // Add other fields if needed later, e.g., currency, timezone
 }
 
@@ -77,4 +81,53 @@ export interface GetCustomerDetailsResult {
   success: boolean;
   customer?: CustomerDetails | null; 
   error?: string | null;
-} 
+}
+
+// --- API Response Details ---
+// Based on Orb API examples for nested structures within Subscription fetch
+
+interface Item {
+  id: string;
+  name: string;
+}
+
+interface PriceTier {
+  first_unit?: number | null;
+  last_unit?: number | null;
+  unit_amount?: string | null;
+}
+
+interface Price {
+  id: string;
+  name: string;
+  price_type: 'fixed_price' | 'usage_price' | string; // Allow other strings
+  model_type: 'unit' | 'tiered' | string; // Allow other strings
+  currency: string;
+  item?: Item | null;
+  fixed_price_quantity?: number | null;
+  tiered_config?: { tiers: PriceTier[] } | null;
+  unit_config?: { unit_amount?: string | null } | null;
+  // Add other price fields if needed
+}
+
+interface PriceInterval {
+  id: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  price?: Price | null;
+  // Add other interval fields if needed
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  description?: string | null;
+  // Add other plan fields if needed
+}
+
+// ... PersistedCustomerState, CustomerState definitions ...
+// export type PersistedCustomerState = { ... }; // Keep commented or remove fully if not defined
+// export interface CustomerState extends PersistedCustomerState { ... }; // Keep commented or remove fully if not defined
+
+// ... Store implementation (useCustomerStore) ...
+// export const useCustomerStore = create<CustomerState>()( ... ); // Keep commented or remove fully if not defined 
