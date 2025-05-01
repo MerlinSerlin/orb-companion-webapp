@@ -67,23 +67,6 @@ export async function getCustomerSubscriptions(customerId: string): Promise<GetS
   try {
     console.log(`Fetching subscriptions for customer ${customerId}`)
     
-    // Assume Orb SDK type (adjust if needed)
-    type OrbSDKSubscription = {
-      id: string;
-      name?: string;
-      currency?: string;
-      status: 'active' | 'canceled' | 'ended' | 'pending' | 'upcoming';
-      start_date?: string | null;
-      end_date?: string | null;
-      current_billing_period_start_date?: string | null;
-      current_billing_period_end_date?: string | null;
-      plan?: { id: string; name?: string } | null; 
-      customer?: { 
-        id: string;
-        external_customer_id?: string | null; 
-      } | null;
-    };
-
     const orbResponse = await orbClient.subscriptions.list({
       customer_id: [customerId],
     })
@@ -91,19 +74,27 @@ export async function getCustomerSubscriptions(customerId: string): Promise<GetS
     // Extract external ID from the first subscription (assuming it's consistent)
     const externalCustomerId = orbResponse.data?.[0]?.customer?.external_customer_id;
 
-    // Map the SDK response to our Subscription structure
-    const subscriptionsData: Subscription[] = orbResponse.data.map((sdkSub: OrbSDKSubscription) => ({
-      id: sdkSub.id,
-      name: sdkSub.name,
-      plan_id: sdkSub.plan?.id || 'unknown_plan_id', 
-      planName: sdkSub.plan?.name,
-      currency: sdkSub.currency,
-      status: sdkSub.status,
-      start_date: sdkSub.start_date,
-      end_date: sdkSub.end_date,
-      current_period_start: sdkSub.current_billing_period_start_date,
-      current_period_end: sdkSub.current_billing_period_end_date,
-    }));
+    // Map the SDK response - Using 'any' temporarily until SDK type is known
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subscriptionsData: Subscription[] = orbResponse.data.map((sdkSub: any) => { 
+      
+      // Map the rest of the fields, including nested objects
+      return {
+        id: sdkSub.id,
+        name: sdkSub.name,
+        // plan_id and planName are now part of the plan object
+        currency: sdkSub.currency,
+        status: sdkSub.status,
+        start_date: sdkSub.start_date,
+        end_date: sdkSub.end_date,
+        // Correctly map date properties from the SDK object (now typed as 'any')
+        current_period_start: sdkSub.current_billing_period_start_date, 
+        current_period_end: sdkSub.current_billing_period_end_date, 
+        // Map the nested objects directly 
+        plan: sdkSub.plan, 
+        price_intervals: sdkSub.price_intervals, 
+      };
+    });
 
     return {
       success: true,
@@ -256,8 +247,6 @@ export async function getCustomerDetails(customerId: string): Promise<GetCustome
     
     const customer = await orbClient.customers.fetch(customerId);
 
-    // Check if customer was found (Orb might throw an error or return null/empty)
-    // Adjust this check based on actual Orb SDK behavior for not found
     if (!customer) {
       throw new Error('Customer not found');
     }
@@ -269,7 +258,7 @@ export async function getCustomerDetails(customerId: string): Promise<GetCustome
         external_customer_id: customer.external_customer_id,
         name: customer.name,
         email: customer.email,
-        // Map other relevant fields if added to CustomerDetails type
+        portal_url: customer.portal_url,
       },
     };
   } catch (error) {
