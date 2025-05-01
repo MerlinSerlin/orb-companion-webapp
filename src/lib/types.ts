@@ -1,5 +1,6 @@
-import { create } from 'zustand'
-import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware'
+// Remove unused Zustand imports
+// import { create } from 'zustand'
+// import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware'
 
 /**
  * Represents the structure of a subscription object
@@ -86,18 +87,18 @@ export interface GetCustomerDetailsResult {
 // --- API Response Details ---
 // Based on Orb API examples for nested structures within Subscription fetch
 
-interface Item {
+export interface Item {
   id: string;
   name: string;
 }
 
-interface PriceTier {
+export interface PriceTier {
   first_unit?: number | null;
   last_unit?: number | null;
   unit_amount?: string | null;
 }
 
-interface Price {
+export interface Price {
   id: string;
   name: string;
   price_type: 'fixed_price' | 'usage_price' | string; // Allow other strings
@@ -110,7 +111,7 @@ interface Price {
   // Add other price fields if needed
 }
 
-interface PriceInterval {
+export interface PriceInterval {
   id: string;
   start_date?: string | null;
   end_date?: string | null;
@@ -118,7 +119,7 @@ interface PriceInterval {
   // Add other interval fields if needed
 }
 
-interface Plan {
+export interface Plan {
   id: string;
   name: string;
   description?: string | null;

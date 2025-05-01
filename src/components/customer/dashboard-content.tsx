@@ -14,7 +14,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { CheckCircle2, AlertCircle } from "lucide-react"
 import type { Subscription, CustomerDetails } from "@/lib/types";
-import { PLAN_DETAILS } from "@/components/plans/plan-data";
 
 // Helper function to format large numbers
 const formatNumber = (num: number | string): string => {
