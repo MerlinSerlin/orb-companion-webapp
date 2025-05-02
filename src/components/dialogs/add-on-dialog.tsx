@@ -84,7 +84,7 @@ export function AddOnDialog({
   const todayStr = formatDateForInput(new Date());
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add {itemName}</DialogTitle>
@@ -113,7 +113,9 @@ export function AddOnDialog({
           <div className="font-medium text-muted-foreground">Total Add-on Cost</div>
           <div className="text-right font-semibold">{formatCurrency(totalPrice)}</div>
 
-          {/* --- Native Date Input --- */} 
+          <div className="font-medium text-muted-foreground">New Total Quantity</div>
+          <div className="text-right font-semibold">{currentQuantity + quantityToAdd}</div>
+
           <Label htmlFor="effective-date" className="font-medium text-muted-foreground self-center">
             Effective Date
           </Label>
@@ -145,8 +147,6 @@ export function AddOnDialog({
               "text-sm" 
             )}
           />
-          {/* --- End Native Date Input --- */}
-
         </div>
         <DialogFooter>
           <Button 

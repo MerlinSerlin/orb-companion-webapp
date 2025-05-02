@@ -412,29 +412,30 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
                       <ul className="space-y-4">
                         {features.map((feature, index) => (
                           <li key={index} className="flex items-start justify-between border-b pb-3 pt-1 last:border-b-0 text-sm">
-                            {/* Left side: Simple Icon and Name */} 
-                            <div className="flex items-center pt-0.5"> {/* Revert to flex items-center */} 
+                            {/* Left side: Icon, Name */}
+                            <div className="flex items-center pt-0.5">
                               <CheckCircle2 className="mr-2 h-4 w-4 text-green-500 flex-shrink-0" />
-                              <span className="font-medium">{feature.name}</span>
+                              <span className="font-medium">{feature.name}</span> {/* Removed margin */}
+                              {/* Button removed from here */}
                             </div>
-                            
-                            {/* Right side: Base Value, Overage, and Conditional Button */} 
-                            <div className="flex flex-col items-end text-right space-y-0.5"> 
+
+                            {/* Right side: Base Value, Overage, and Conditional Button */}
+                            <div className="flex flex-col items-end text-right space-y-0.5">
                               <span className="font-medium">{feature.baseValue}</span>
                               {feature.overageInfo && (
-                                <span className="text-xs text-muted-foreground"> 
+                                <span className="text-xs text-muted-foreground">
                                   {feature.overageInfo}
                                 </span>
                               )}
-                              {/* Conditionally add button for Concurrent Builds below overage */} 
+                              {/* Conditionally add button for Concurrent Builds below overage */}
                               {feature.name === 'Concurrent Builds' && (
-                                <Button 
-                                  variant="outline"
-                                  size="sm" 
-                                  className="mt-1 h-6 px-2"
-                                  onClick={() => setIsAddOnDialogOpen(true)} 
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="mt-1 h-6 px-2" // Added margin-top back
+                                  onClick={() => setIsAddOnDialogOpen(true)}
                                 >
-                                  + Add
+                                  Add
                                 </Button>
                               )}
                             </div>
