@@ -14,6 +14,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { CheckCircle2, AlertCircle } from "lucide-react"
 import type { Subscription, CustomerDetails } from "@/lib/types";
+import { AddOnDialog } from "@/components/dialogs/add-on-dialog";
+import React from "react";
 
 // Helper function to format large numbers
 const formatNumber = (num: number | string): string => {
@@ -53,6 +55,9 @@ interface CustomerDashboardContentProps {
 export function CustomerDashboardContent({ customerId: customerIdProp }: CustomerDashboardContentProps) {
   const router = useRouter()
   
+  // --- State for Dialog --- 
+  const [isAddOnDialogOpen, setIsAddOnDialogOpen] = React.useState(false);
+
   // --- React Query Hooks --- (Customer Details defined before useEffect)
   const { 
     data: customerDetails, 
@@ -118,7 +123,13 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
     if (!activeSubscription?.price_intervals) return [];
 
     // Update structure to hold separate base and overage values
-    const entitlementFeatures: { name: string; baseValue: string; overageInfo?: string }[] = [];
+    const entitlementFeatures: { 
+      name: string; 
+      baseValue: string; 
+      overageInfo?: string; 
+      rawQuantity?: number; 
+      rawOveragePrice?: number; // Add raw overage price field
+    }[] = [];
 
     activeSubscription.price_intervals.forEach(interval => {
       const price = interval.price;
@@ -146,11 +157,12 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
 
       let baseValue = "Included"; // Default base value
       let overageInfo: string | undefined = undefined; // Overage info
+      let rawQuantity: number | undefined = undefined; // Raw quantity
+      let rawOveragePrice: number | undefined = undefined; // Add variable
       const currencySymbol = price.currency === 'USD' ? '$' : ''; 
 
       if (price.price_type === 'fixed_price' && typeof price.fixed_price_quantity === 'number') {
-         // Apply formatting only if it's likely a large quantity, not something like 'concurrent builds = 1'
-         // Let's assume fixed quantities are typically small unless explicitly known otherwise
+         rawQuantity = price.fixed_price_quantity; // Store raw quantity
          baseValue = formatNumber(price.fixed_price_quantity); // Apply formatting cautiously
          // Check for overage tier for fixed price items too (like concurrent builds)
          if (price.model_type === 'tiered' && price.tiered_config?.tiers && price.tiered_config.tiers.length > 1) {
@@ -160,7 +172,9 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
                 let perUnit = 'additional unit'; 
                 if (price.item.name.includes('Build')) perUnit = 'build';
                 // Format the overage amount as well
-                const formattedOverageAmount = parseFloat(overageTier.unit_amount).toFixed(2); // Ensure 2 decimal places for currency
+                const overageAmount = parseFloat(overageTier.unit_amount);
+                rawOveragePrice = overageAmount; // Store raw overage price
+                const formattedOverageAmount = overageAmount.toFixed(2);
                 overageInfo = `(then ${currencySymbol}${formattedOverageAmount}/${perUnit})`;
              }
          }
@@ -178,6 +192,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
              // Determine included amount from first tier (if not unlimited)
              else if (firstTier.last_unit !== null && firstTier.last_unit !== undefined && firstTier.last_unit > 0) { 
                 const amount = firstTier.last_unit; // Use raw number for formatting
+                rawQuantity = amount; // Store raw usage quantity
                 let unit = '';
                 if (price.item.name.includes('GB')) unit = ' GB';
                 if (price.item.name.includes('Minutes')) unit = ' minutes';
@@ -196,6 +211,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
                     if (price.item.name.includes('Request')) perUnit = 'request';
                     // Format the overage amount (consider very small amounts)
                     const overageAmount = parseFloat(overageTier.unit_amount);
+                    rawOveragePrice = overageAmount; // Store raw overage price
                     // Use standard decimal format for small fractions (< 0.01), toFixed(2) otherwise
                     let formattedOverageAmount;
                     if (overageAmount < 0.01 && overageAmount > 0) {
@@ -230,6 +246,8 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
         name: displayName, 
         baseValue: baseValue, // Store base value
         overageInfo: overageInfo, // Store overage info (optional)
+        rawQuantity: rawQuantity, // Include raw quantity
+        rawOveragePrice: rawOveragePrice, // Include raw overage price
       });
     });
 
@@ -248,6 +266,11 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
     return entitlementFeatures;
 
   }, [activeSubscription]);
+
+  // --- Find Concurrent Builds data for Dialog --- 
+  const concurrentBuildsFeatureData = useMemo(() => { 
+      return features.find(f => f.name === 'Concurrent Builds');
+  }, [features]);
 
   // --- Render Logic --- 
 
@@ -389,16 +412,31 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
                       <ul className="space-y-4">
                         {features.map((feature, index) => (
                           <li key={index} className="flex items-start justify-between border-b pb-3 pt-1 last:border-b-0 text-sm">
+                            {/* Left side: Icon, Name */}
                             <div className="flex items-center pt-0.5">
                               <CheckCircle2 className="mr-2 h-4 w-4 text-green-500 flex-shrink-0" />
-                              <span className="font-medium">{feature.name}</span>
+                              <span className="font-medium">{feature.name}</span> {/* Removed margin */}
+                              {/* Button removed from here */}
                             </div>
+
+                            {/* Right side: Base Value, Overage, and Conditional Button */}
                             <div className="flex flex-col items-end text-right space-y-0.5">
                               <span className="font-medium">{feature.baseValue}</span>
                               {feature.overageInfo && (
                                 <span className="text-xs text-muted-foreground">
                                   {feature.overageInfo}
                                 </span>
+                              )}
+                              {/* Conditionally add button for Concurrent Builds below overage */}
+                              {feature.name === 'Concurrent Builds' && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="mt-1 h-6 px-2" // Added margin-top back
+                                  onClick={() => setIsAddOnDialogOpen(true)}
+                                >
+                                  Add
+                                </Button>
                               )}
                             </div>
                           </li>
@@ -470,6 +508,21 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
           </Tabs>
         )}
       </main>
+
+      {/* --- Render the Add-On Dialog --- */} 
+      <AddOnDialog 
+        open={isAddOnDialogOpen}
+        onOpenChange={setIsAddOnDialogOpen}
+        itemName="Concurrent Build" 
+        currentQuantity={concurrentBuildsFeatureData?.rawQuantity ?? 0}
+        addOnPrice={concurrentBuildsFeatureData?.rawOveragePrice ?? 0} 
+        onConfirm={(details) => {
+          const { quantityToAdd, effectiveDate } = details;
+          console.log('[AddOnDialog] Confirmed:', { quantityToAdd, effectiveDate });
+          // TODO: Implement API call/mutation
+          setIsAddOnDialogOpen(false); 
+        }}
+      />
     </>
   )
 } 
