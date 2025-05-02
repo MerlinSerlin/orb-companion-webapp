@@ -113,6 +113,9 @@
 }
 
 @layer base {
+  @tailwind base;
+  @import "react-day-picker/dist/style.css";
+
   * {
     @apply border-border outline-ring/50;
   }
@@ -120,3 +123,6 @@
     @apply bg-background text-foreground;
   }
 }
+
+@tailwind components;
+@tailwind utilities;
