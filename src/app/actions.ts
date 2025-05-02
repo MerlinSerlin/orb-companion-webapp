@@ -65,35 +65,36 @@ export async function createSubscription(customerId: string, planId: string) {
 
 export async function getCustomerSubscriptions(customerId: string): Promise<GetSubscriptionsResult> {
   try {
-    console.log(`Fetching subscriptions for customer ${customerId}`)
-    
     const orbResponse = await orbClient.subscriptions.list({
       customer_id: [customerId],
-    })
+    });
 
-    // Extract external ID from the first subscription (assuming it's consistent)
     const externalCustomerId = orbResponse.data?.[0]?.customer?.external_customer_id;
 
-    // Map the SDK response - Using 'any' temporarily until SDK type is known
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const subscriptionsData: Subscription[] = orbResponse.data.map((sdkSub: any) => { 
-      
-      // Map the rest of the fields, including nested objects
+    if (!orbResponse.data || orbResponse.data.length === 0) {
       return {
+        success: true,
+        externalCustomerId: externalCustomerId, 
+        subscriptions: [], 
+      };
+    }
+
+    // Re-adding any type temporarily as SDK type is unknown
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subscriptionsData: Subscription[] = orbResponse.data.map((sdkSub: any) => {
+      const mappedSub = {
         id: sdkSub.id,
         name: sdkSub.name,
-        // plan_id and planName are now part of the plan object
         currency: sdkSub.currency,
         status: sdkSub.status,
         start_date: sdkSub.start_date,
         end_date: sdkSub.end_date,
-        // Correctly map date properties from the SDK object (now typed as 'any')
         current_period_start: sdkSub.current_billing_period_start_date, 
         current_period_end: sdkSub.current_billing_period_end_date, 
-        // Map the nested objects directly 
         plan: sdkSub.plan, 
         price_intervals: sdkSub.price_intervals, 
       };
+      return mappedSub;
     });
 
     return {
@@ -102,12 +103,11 @@ export async function getCustomerSubscriptions(customerId: string): Promise<GetS
       subscriptions: subscriptionsData,
     }
   } catch (error) {
-    console.error('Error fetching subscriptions:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch subscriptions';
     return {
       success: false,
       error: errorMessage,
-      subscriptions: null
+      subscriptions: null 
     }
   }
 }
@@ -274,6 +274,64 @@ export async function getCustomerDetails(customerId: string): Promise<GetCustome
       // Optionally provide more specific error, or just the message
       error: isNotFoundError ? 'Customer not found' : errorMessage, 
     };
+  }
+}
+
+/**
+ * Updates the quantity of a fixed-fee add-on (price interval) for a subscription.
+ * Uses Orb's Add/Edit Price Intervals endpoint.
+ */
+export async function editPriceIntervalQuantity(
+  subscriptionId: string,
+  priceIntervalId: string,
+  newQuantity: number,
+  effectiveDate: string // Expecting YYYY-MM-DD format
+): Promise<{ success: boolean; error?: string }> {
+  if (!process.env.ORB_API_KEY) {
+    console.error('Orb API key is not configured.');
+    return { success: false, error: 'Server configuration error.' };
+  }
+  if (!subscriptionId || !priceIntervalId) {
+     return { success: false, error: 'Missing subscription or price interval ID.' };
+  }
+
+  const orbApiUrl = `https://api.withorb.com/v1/subscriptions/${subscriptionId}/price_intervals`;
+
+  const requestBody = {
+    edit: [
+      {
+        price_interval_id: priceIntervalId,
+        fixed_fee_quantity_transitions: [
+          {
+            quantity: newQuantity,
+            effective_date: effectiveDate,
+          },
+        ],
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(orbApiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.ORB_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      console.error('Failed to edit Orb price interval:', errorBody);
+      const errorMessage = errorBody?.title || `API Error: ${response.status} ${response.statusText}`;
+      return { success: false, error: errorMessage };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error calling Orb API:', error);
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }
 

@@ -35,6 +35,8 @@ interface ApiPreviewDialogProps {
   className?: string
   // Height of the code preview area (default: 400px)
   codeHeight?: number
+  // Add disabled prop
+  disabled?: boolean
 }
 
 export function ApiPreviewDialog({ 
@@ -48,7 +50,8 @@ export function ApiPreviewDialog({
   buttonSize = "sm",
   buttonText = "Preview API Call",
   className,
-  codeHeight = 400
+  codeHeight = 400,
+  disabled // Accept disabled prop
 }: ApiPreviewDialogProps) {
   const [open, setOpen] = React.useState(false)
   const [copied, setCopied] = React.useState(false)
@@ -82,6 +85,7 @@ export function ApiPreviewDialog({
           variant={buttonVariant} 
           size={buttonSize}
           className={cn("gap-1.5", className)}
+          disabled={disabled} // Apply disabled prop to the trigger button
         >
           <Info className="h-4 w-4" />
           {buttonText}
@@ -139,7 +143,7 @@ export function ApiPreviewDialog({
                 <TabsContent value="request" className="m-0 h-full">
                   <div className="overflow-auto h-full">
                     <CodeBlock 
-                      code={fullRequest} 
+                      code={payload}
                       language="json"
                       className="border-0"
                     />
@@ -160,7 +164,7 @@ export function ApiPreviewDialog({
             <div className="border rounded-md" style={{ height: `${codeHeight}px` }}>
               <div className="overflow-auto h-full">
                 <CodeBlock 
-                  code={fullRequest} 
+                  code={payload}
                   language="json"
                   className="border-0"
                 />
