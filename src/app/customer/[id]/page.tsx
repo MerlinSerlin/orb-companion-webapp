@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { notFound } from 'next/navigation'
 // Import React Query client and hydration components
 import { HydrationBoundary, QueryClient, dehydrate } from '@tanstack/react-query' 
-import { CustomerDashboardContent } from "@/components/customer/dashboard-content"
+import { CustomerDashboardContent } from "@/components/customer-dashboard/dashboard-content"
 // Import both server actions
 import { getCustomerSubscriptions, getCustomerDetails } from "@/app/actions"
 // Define a simple loading skeleton component
@@ -69,3 +69,5 @@ export default async function CustomerDashboardPage({
     </HydrationBoundary>
   )
 } 
+
+export const dynamic = 'force-dynamic' 

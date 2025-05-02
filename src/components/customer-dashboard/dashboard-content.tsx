@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery } from '@tanstack/react-query'
 import { useCustomerStore } from "@/lib/store/customer-store"
-import { getCustomerDetails } from "@/app/actions"
+import { getCustomerDetails, getCustomerSubscriptions } from "@/app/actions"
 import { Header } from "@/components/ui/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,38 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CheckCircle2, AlertCircle } from "lucide-react"
+import { CheckCircle2, AlertCircle, Info } from "lucide-react"
 import type { Subscription, CustomerDetails } from "@/lib/types";
 import { AddOnDialog } from "@/components/dialogs/add-on-dialog";
-import React from "react";
-
-// Helper function to format large numbers
-const formatNumber = (num: number | string): string => {
-  const numericValue = typeof num === 'string' ? parseFloat(num) : num;
-  if (isNaN(numericValue)) return String(num); // Return original if not a number
-
-  if (numericValue >= 1e12) { // Trillions
-    return (numericValue / 1e12).toFixed(1).replace(/\.0$/, '') + 'T';
-  }
-  if (numericValue >= 1e9) { // Billions
-    return (numericValue / 1e9).toFixed(1).replace(/\.0$/, '') + 'G';
-  }
-  if (numericValue >= 1e6) { // Millions
-    return (numericValue / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
-  }
-  if (numericValue >= 1e3) { // Thousands
-    // Optional: Abbreviate thousands? e.g., 5000 -> 5K
-    // return (numericValue / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
-    // Or keep them as is for clarity below millions
-    return numericValue.toLocaleString(); // Add commas for thousands
-  }
-  // For numbers less than 1000, return as is (or maybe format decimals if needed)
-  // Using toFixed(1) and removing .0 for consistency with abbreviations
-  if (numericValue % 1 !== 0) { // Check if it has decimals
-     return parseFloat(numericValue.toFixed(1)).toString(); // Format to 1 decimal place
-  }
-  return numericValue.toString();
-};
+import { useQueryClient } from '@tanstack/react-query'
+import { formatDate, getStatusColor } from "@/lib/utils/formatters";
+import { deriveEntitlementsFromSubscription } from "@/lib/utils/subscriptionUtils";
 
 // Exporting the type for use in the server component page
 export type { Subscription };
@@ -54,9 +28,10 @@ interface CustomerDashboardContentProps {
 
 export function CustomerDashboardContent({ customerId: customerIdProp }: CustomerDashboardContentProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   
   // --- State for Dialog --- 
-  const [isAddOnDialogOpen, setIsAddOnDialogOpen] = React.useState(false);
+  const [isAddOnDialogOpen, setIsAddOnDialogOpen] = useState(false);
 
   // --- React Query Hooks --- (Customer Details defined before useEffect)
   const { 
@@ -74,6 +49,27 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
       return result.customer; 
     },
     staleTime: Infinity, 
+    enabled: !!customerIdProp
+  });
+
+  // Add detailed status logging for subscriptions query
+  const {
+    data: subscriptions,
+    error: subscriptionsError,
+    isLoading: subscriptionsLoading,
+    isError: subscriptionsIsError,
+  } = useQuery<Subscription[], Error>({ 
+    queryKey: ['subscriptions', customerIdProp],
+    queryFn: async () => { 
+      const result = await getCustomerSubscriptions(customerIdProp);
+      if (!result.success) {
+        // Throw error to put query hook in error state
+        throw new Error(result.error || 'Failed to fetch subscriptions');
+      }
+      // Ensure we return an empty array if subscriptions are null/undefined
+      return result.subscriptions ?? []; 
+    },
+    staleTime: 5 * 60 * 1000, 
     enabled: !!customerIdProp
   });
 
@@ -96,21 +92,6 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
   // Depend on the fetched customerDetails object
   }, [customerDetails]); 
 
-  // --- Subscriptions Query ---
-  const { 
-    data: subscriptions, 
-    error: subscriptionsError 
-  } = useQuery<Subscription[], Error>({
-    queryKey: ['subscriptions', customerIdProp],
-    queryFn: async () => { 
-        // console.warn('Client-side subscription fetch executed...'); // Optional log
-        // For now, assume hydration or handle client fetch if necessary
-        return []; 
-    },
-    staleTime: 5 * 60 * 1000, 
-    enabled: !!customerIdProp
-  });
-
   // --- Calculate derived state directly during render ---
   const activeSubscription = useMemo(() => {
     if (!subscriptions || subscriptions.length === 0) return null;
@@ -118,157 +99,14 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
     return subscriptions.find(sub => sub.status === "active") || subscriptions[0];
   }, [subscriptions]);
 
-  // Derive features/entitlements from the active subscription's price intervals
+  // Derive features/entitlements using the abstracted function
   const features = useMemo(() => {
-    if (!activeSubscription?.price_intervals) return [];
-
-    // Update structure to hold separate base and overage values
-    const entitlementFeatures: { 
-      name: string; 
-      baseValue: string; 
-      overageInfo?: string; 
-      rawQuantity?: number; 
-      rawOveragePrice?: number; // Add raw overage price field
-    }[] = [];
-
-    activeSubscription.price_intervals.forEach(interval => {
-      const price = interval.price;
-      if (!price || !price.item || price.item.name === "Platform Fee") { 
-        return; // Skip Platform Fee
-      }
-
-      // --- Remove Debug Logging START ---
-      /*
-      if (price?.item?.name?.includes('Builds')) { // Log specifically for Builds/Concurrent Builds
-        console.log('[DEBUG] Processing Builds interval:', JSON.stringify(interval, null, 2));
-        // Log the specific fields used in the Unlimited check
-        if (price.price_type === 'usage_price' && price.model_type === 'tiered' && price.tiered_config?.tiers?.[0]) {
-          const firstTier = price.tiered_config.tiers[0];
-          console.log('[DEBUG] Builds First Tier Details:', {
-            last_unit: firstTier.last_unit,
-            first_unit: firstTier.first_unit,
-            unit_amount: firstTier.unit_amount,
-            isZeroCostCheck: firstTier.unit_amount == null || firstTier.unit_amount === '0' || firstTier.unit_amount === '0.00'
-          });
-        }
-      }
-      */
-      // --- Remove Debug Logging END ---
-
-      let baseValue = "Included"; // Default base value
-      let overageInfo: string | undefined = undefined; // Overage info
-      let rawQuantity: number | undefined = undefined; // Raw quantity
-      let rawOveragePrice: number | undefined = undefined; // Add variable
-      const currencySymbol = price.currency === 'USD' ? '$' : ''; 
-
-      if (price.price_type === 'fixed_price' && typeof price.fixed_price_quantity === 'number') {
-         rawQuantity = price.fixed_price_quantity; // Store raw quantity
-         baseValue = formatNumber(price.fixed_price_quantity); // Apply formatting cautiously
-         // Check for overage tier for fixed price items too (like concurrent builds)
-         if (price.model_type === 'tiered' && price.tiered_config?.tiers && price.tiered_config.tiers.length > 1) {
-             const overageTier = price.tiered_config.tiers[1];
-             if (overageTier && overageTier.unit_amount && parseFloat(overageTier.unit_amount) > 0) {
-                // Determine unit if possible (might be just 'additional unit')
-                let perUnit = 'additional unit'; 
-                if (price.item.name.includes('Build')) perUnit = 'build';
-                // Format the overage amount as well
-                const overageAmount = parseFloat(overageTier.unit_amount);
-                rawOveragePrice = overageAmount; // Store raw overage price
-                const formattedOverageAmount = overageAmount.toFixed(2);
-                overageInfo = `(then ${currencySymbol}${formattedOverageAmount}/${perUnit})`;
-             }
-         }
-      } else if (price.price_type === 'usage_price' && price.model_type === 'tiered' && price.tiered_config?.tiers) {
-         const tiers = price.tiered_config.tiers;
-         const firstTier = tiers[0];
-         
-         if (firstTier) { 
-             // Check for ZERO COST / UNLIMITED condition FIRST
-             const isZeroCost = firstTier.unit_amount == null || firstTier.unit_amount === '0' || firstTier.unit_amount === '0.00';
-             if (firstTier.last_unit === null && firstTier.first_unit === 0 && isZeroCost) { 
-                // Keep baseValue as default "Included" (or derive if necessary, but Included is likely correct)
-                overageInfo = 'Unlimited'; // Set the description/overage text to Unlimited
-             }
-             // Determine included amount from first tier (if not unlimited)
-             else if (firstTier.last_unit !== null && firstTier.last_unit !== undefined && firstTier.last_unit > 0) { 
-                const amount = firstTier.last_unit; // Use raw number for formatting
-                rawQuantity = amount; // Store raw usage quantity
-                let unit = '';
-                if (price.item.name.includes('GB')) unit = ' GB';
-                if (price.item.name.includes('Minutes')) unit = ' minutes';
-                if (price.item.name.includes('Request')) unit = ' requests';
-                // Apply number formatting here
-                baseValue = `${formatNumber(amount)}${unit}`;
-             }
-             
-             // Determine overage from the next tier(s) ONLY IF NOT UNLIMITED
-             if (baseValue !== 'Unlimited' && tiers.length > 1) {
-                const overageTier = tiers[1];
-                if (overageTier && overageTier.unit_amount && parseFloat(overageTier.unit_amount) > 0) {
-                    let perUnit = '';
-                    if (price.item.name.includes('GB')) perUnit = 'GB';
-                    if (price.item.name.includes('Minutes')) perUnit = 'minute';
-                    if (price.item.name.includes('Request')) perUnit = 'request';
-                    // Format the overage amount (consider very small amounts)
-                    const overageAmount = parseFloat(overageTier.unit_amount);
-                    rawOveragePrice = overageAmount; // Store raw overage price
-                    // Use standard decimal format for small fractions (< 0.01), toFixed(2) otherwise
-                    let formattedOverageAmount;
-                    if (overageAmount < 0.01 && overageAmount > 0) {
-                        formattedOverageAmount = overageAmount.toString(); // Use standard string representation for small decimals
-                        // Or potentially use toFixed() with more places if needed: e.g., overageAmount.toFixed(4)
-                    } else { // For amounts >= 0.01 or exactly 0
-                        formattedOverageAmount = overageAmount.toFixed(2); 
-                    }
-                    overageInfo = `(then ${currencySymbol}${formattedOverageAmount}${perUnit ? `/${perUnit}` : ''})`;
-                }
-             }
-         }
-      } 
-      // --- Add check for Unit-based Usage Price --- 
-      else if (price.price_type === 'usage_price' && price.model_type === 'unit') {
-         // Check if the unit price is zero, indicating unlimited usage for this model type
-         const unitAmount = price.unit_config?.unit_amount;
-         const isZeroCostUnit = unitAmount == null || unitAmount === '0' || unitAmount === '0.00';
-         if (isZeroCostUnit) {
-           // Keep baseValue as "Included"
-           overageInfo = 'Unlimited'; 
-         } else {
-           // Handle non-zero unit-based usage prices if necessary (e.g., display per-unit cost)
-           // For now, we assume non-zero unit prices might not appear or don't need special handling
-         }
-      } 
-      // --- End check for Unit-based Usage Price ---
-
-      const displayName = price.item.name.replace(/^Nimbus Scale\s+/, '');
-
-      entitlementFeatures.push({
-        name: displayName, 
-        baseValue: baseValue, // Store base value
-        overageInfo: overageInfo, // Store overage info (optional)
-        rawQuantity: rawQuantity, // Include raw quantity
-        rawOveragePrice: rawOveragePrice, // Include raw overage price
-      });
-    });
-
-    // Move "Concurrent Builds" to the end if it exists
-    const concurrentBuildsIndex = entitlementFeatures.findIndex(feat => feat.name === 'Concurrent Builds');
-    if (concurrentBuildsIndex > -1) {
-      // Remove the item from its current position
-      const [concurrentBuildsFeature] = entitlementFeatures.splice(concurrentBuildsIndex, 1);
-      // Add it to the end
-      entitlementFeatures.push(concurrentBuildsFeature);
-    }
-
-    // Optional: Sort remaining features alphabetically? (If desired)
-    // entitlementFeatures.sort((a, b) => a.name.localeCompare(b.name)); 
-
-    return entitlementFeatures;
-
+    return deriveEntitlementsFromSubscription(activeSubscription);
   }, [activeSubscription]);
 
-  // --- Find Concurrent Builds data for Dialog --- 
-  const concurrentBuildsFeatureData = useMemo(() => { 
+  // --- Find Concurrent Builds data (including priceIntervalId) for Dialog ---
+  const concurrentBuildsFeatureData = useMemo(() => {
+      // Ensure features includes priceIntervalId
       return features.find(f => f.name === 'Concurrent Builds');
   }, [features]);
 
@@ -290,24 +128,55 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
     );
   }
 
-  const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+  // Prioritize subscription loading/error states for main content display
+  if (subscriptionsLoading) {
+    return (
+      <>
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <p>Loading subscriptions...</p> {/* Add a loading indicator */}
+        </main>
+      </>
+    );
   }
-  
-  const getStatusColor = (status: Subscription['status'] | undefined): string => {
-    switch (status) {
-      case "active": return "bg-green-500";
-      case "canceled": return "bg-red-500";
-      case "ended": return "bg-gray-500";
-      case "pending": return "bg-yellow-500";
-      case "upcoming": return "bg-blue-500";
-      default: return "bg-gray-500";
-    }
+
+  if (subscriptionsIsError) { // Check specific error state for subscriptions
+    return (
+      <div className="container mx-auto p-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error Loading Subscriptions</AlertTitle>
+          <AlertDescription>
+            {(subscriptionsError as Error)?.message || 'An unknown error occurred'}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Original check for no subscriptions *after* loading and error checks
+  if (!subscriptions || subscriptions.length === 0) { 
+    console.log('[Dashboard Render] Rendering No Subscriptions card.');
+    return (
+      <>
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>No Subscriptions Found</CardTitle>
+              <CardDescription>
+                Customer {customerIdProp} doesn&apos;t have any active subscriptions yet.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button onClick={() => router.push("/")}>
+                Browse Plans
+              </Button>
+            </CardFooter>
+          </Card>
+        </main>
+      </>
+    );
   }
 
   return (
@@ -419,24 +288,40 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
                               {/* Button removed from here */}
                             </div>
 
-                            {/* Right side: Base Value, Overage, and Conditional Button */}
-                            <div className="flex flex-col items-end text-right space-y-0.5">
-                              <span className="font-medium">{feature.baseValue}</span>
-                              {feature.overageInfo && (
-                                <span className="text-xs text-muted-foreground">
-                                  {feature.overageInfo}
-                                </span>
-                              )}
-                              {/* Conditionally add button for Concurrent Builds below overage */}
+                            {/* Right side: Value, Overage, Button, Scheduled Change */}
+                            <div className="flex flex-col items-end text-right space-y-1"> 
+                              <div className="flex flex-col items-end space-y-0.5"> 
+                                 {/* Current Quantity (No longer includes scheduled change inline) */}
+                                 <span className="font-medium">{feature.baseValue}</span>
+                                 {/* Overage Info */}
+                                 {feature.overageInfo && (
+                                   <span className="text-xs text-muted-foreground">
+                                     {feature.overageInfo}
+                                   </span>
+                                 )}
+                              </div>
+                              
+                              {/* Button */}
                               {feature.name === 'Concurrent Builds' && (
-                                <Button
+                                <Button 
                                   variant="default"
                                   size="sm"
-                                  className="mt-1 h-6 px-2" // Added margin-top back
+                                  className="mt-1 h-6 px-2"
                                   onClick={() => setIsAddOnDialogOpen(true)}
                                 >
-                                  Add
+                                  {/* Conditional Button Text (Updated Logic) */}
+                                  {feature.scheduledChange || (feature.rawQuantity && feature.rawQuantity > 1) ? 'Adjust' : 'Add'}
                                 </Button>
+                              )}
+
+                              {/* Scheduled Change Indicator (Moved back here) */}
+                              {feature.scheduledChange && (
+                                <div className="flex items-center text-xs text-blue-600 dark:text-blue-400 mt-1 space-x-1">
+                                  <Info className="h-3 w-3 flex-shrink-0" />
+                                  <span>
+                                    Scheduled change to {feature.scheduledChange.quantity} on {formatDate(feature.scheduledChange.effectiveDate)}
+                                  </span>
+                                </div>
                               )}
                             </div>
                           </li>
@@ -509,20 +394,23 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
         )}
       </main>
 
-      {/* --- Render the Add-On Dialog --- */} 
-      <AddOnDialog 
-        open={isAddOnDialogOpen}
-        onOpenChange={setIsAddOnDialogOpen}
-        itemName="Concurrent Build" 
-        currentQuantity={concurrentBuildsFeatureData?.rawQuantity ?? 0}
-        addOnPrice={concurrentBuildsFeatureData?.rawOveragePrice ?? 0} 
-        onConfirm={(details) => {
-          const { quantityToAdd, effectiveDate } = details;
-          console.log('[AddOnDialog] Confirmed:', { quantityToAdd, effectiveDate });
-          // TODO: Implement API call/mutation
-          setIsAddOnDialogOpen(false); 
-        }}
-      />
+      {/* --- Render the Add-On Dialog --- */}
+      {activeSubscription && concurrentBuildsFeatureData && concurrentBuildsFeatureData.priceIntervalId && ( // Ensure priceIntervalId exists
+        <AddOnDialog
+          open={isAddOnDialogOpen}
+          onOpenChange={setIsAddOnDialogOpen}
+          itemName="Concurrent Build"
+          currentQuantity={concurrentBuildsFeatureData.rawQuantity ?? 0}
+          addOnPrice={concurrentBuildsFeatureData.rawOveragePrice ?? 0}
+          subscriptionId={activeSubscription.id}
+          priceIntervalId={concurrentBuildsFeatureData.priceIntervalId} 
+          currentPeriodStartDate={activeSubscription.current_period_start} // Pass current period start date
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['subscriptions', customerIdProp] });
+            setIsAddOnDialogOpen(false);
+          }}
+        />
+      )}
     </>
   )
 } 

@@ -111,11 +111,20 @@ export interface Price {
   // Add other price fields if needed
 }
 
+// Add type for the quantity transition object
+export interface FixedFeeQuantityTransition {
+  effective_date: string; 
+  quantity: number;
+  price_id?: string; // Optional price_id as seen in logs
+}
+
 export interface PriceInterval {
   id: string;
   start_date?: string | null;
   end_date?: string | null;
   price?: Price | null;
+  // Add the new field, allowing null or array
+  fixed_fee_quantity_transitions?: FixedFeeQuantityTransition[] | null; 
   // Add other interval fields if needed
 }
 
