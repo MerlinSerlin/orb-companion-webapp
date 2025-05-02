@@ -13,15 +13,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input"; // Example input
 import { Label } from "@/components/ui/label"; // Example label
-import { Calendar } from "@/components/ui/calendar"; // Add Calendar
+// import { Calendar } from "@/components/ui/calendar"; // Add Calendar
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+  // Popover,
+  // PopoverContent,
+  // PopoverTrigger,
 } from "@/components/ui/popover"; // Add Popover components
 import { cn } from "@/lib/utils"; // Add cn utility
-import { format } from "date-fns"; // Add date-fns format
-import { Calendar as CalendarIcon } from "lucide-react"; // Add CalendarIcon
+import { format, parse } from "date-fns"; // Add date-fns format
+// import { Calendar as CalendarIcon } from "lucide-react"; // Add CalendarIcon
 
 interface AddOnDialogProps {
   open: boolean;
@@ -50,20 +50,20 @@ export function AddOnDialog({
   // State for the *number of units to add*
   const [quantityToAdd, setQuantityToAdd] = React.useState<number>(1);
   // State for the effective date
-  const [effectiveDate, setEffectiveDate] = React.useState<Date | undefined>(new Date());
+  const [effectiveDate, setEffectiveDate] = React.useState<Date>(new Date()); // Default to today
   
   const handleConfirm = () => {
-    if (onConfirm && effectiveDate) { // Ensure date is selected
-      onConfirm({ quantityToAdd, effectiveDate }); // Pass the quantity *to add* and the selected date
+    if (onConfirm && effectiveDate) {
+      onConfirm({ quantityToAdd, effectiveDate });
     }
-    onOpenChange(false); // Close the dialog
+    onOpenChange(false);
   };
 
   // Reset state when dialog opens
   React.useEffect(() => {
     if (open) {
-      setQuantityToAdd(1); // Reset to adding 1
-      setEffectiveDate(new Date()); // Reset date to today
+      setQuantityToAdd(1);
+      setEffectiveDate(new Date());
     }
   }, [open]);
 
@@ -74,6 +74,14 @@ export function AddOnDialog({
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
+
+  // Helper to format date to YYYY-MM-DD for input value/min
+  const formatDateForInput = (date: Date): string => {
+    return format(date, 'yyyy-MM-dd');
+  };
+  
+  // Get today's date in YYYY-MM-DD format for the min attribute
+  const todayStr = formatDateForInput(new Date());
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
@@ -97,47 +105,53 @@ export function AddOnDialog({
             id="quantity-to-add"
             type="number"
             value={quantityToAdd}
-            onChange={(e) => setQuantityToAdd(parseInt(e.target.value, 10) || 1)} 
+            onChange={(e) => setQuantityToAdd(Math.max(1, parseInt(e.target.value, 10) || 1))} 
             min="1" 
-            className="h-8"
+            className="h-8 text-center"
           />
 
           <div className="font-medium text-muted-foreground">Total Add-on Cost</div>
           <div className="text-right font-semibold">{formatCurrency(totalPrice)}</div>
 
-          {/* Effective Date Picker */} 
+          {/* --- Native Date Input --- */} 
           <Label htmlFor="effective-date" className="font-medium text-muted-foreground self-center">
             Effective Date
           </Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="effective-date"
-                variant={"outline"}
-                className={cn(
-                  "h-8 justify-start text-left font-normal", // Match input height
-                  !effectiveDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {effectiveDate ? format(effectiveDate, "PPP") : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start"> 
-              <Calendar
-                mode="single"
-                selected={effectiveDate}
-                onSelect={setEffectiveDate}
-                disabled={(date: Date) => date < new Date(new Date().setDate(new Date().getDate() - 1))} 
-              />
-            </PopoverContent>
-          </Popover>
+          <Input
+            id="effective-date"
+            type="date"
+            value={effectiveDate ? formatDateForInput(effectiveDate) : ""}
+            onChange={(e) => {
+              // Parse the YYYY-MM-DD string safely
+              try {
+                const parsedDate = parse(e.target.value, 'yyyy-MM-dd', new Date());
+                 // Check if the date is valid and not in the past (relative to today's date part only)
+                if (!isNaN(parsedDate.getTime()) && formatDateForInput(parsedDate) >= todayStr) {
+                    setEffectiveDate(parsedDate);
+                } else if (e.target.value === "") {
+                    // Allow clearing the date maybe? Or reset to today? Let's reset.
+                    setEffectiveDate(new Date()); 
+                }
+              } catch { // Removed the unused error variable binding
+                 // Handle potential parsing errors if needed, maybe reset to today
+                 setEffectiveDate(new Date());
+              }
+            }}
+            min={todayStr} // Prevent selecting past dates
+            className={cn(
+              // Standard input styles from shadcn/ui, added justify-end (removed cursor-pointer)
+              "flex justify-end h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+              // Keep existing text-sm class
+              "text-sm" 
+            )}
+          />
+          {/* --- End Native Date Input --- */}
+
         </div>
         <DialogFooter>
           <Button 
             type="button" 
             onClick={handleConfirm} 
-            // Disable confirm if date is not selected
             disabled={quantityToAdd <= 0 || !effectiveDate} 
           >
             Confirm Change
