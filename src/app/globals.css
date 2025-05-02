@@ -114,7 +114,8 @@
 
 @layer base {
   @tailwind base;
-  @import "react-day-picker/dist/style.css";
+  /* Remove unused react-day-picker import */
+  /* @import "react-day-picker/dist/style.css"; */
 
   * {
     @apply border-border outline-ring/50;
