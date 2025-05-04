@@ -19,7 +19,6 @@ import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 import { PLAN_DETAILS } from "../plans/plan-data"
 
 interface PlanSelectionDialogProps {
-  customerId: string
   onPlanSelected?: () => void
   isOpen: boolean
   onClose: () => void
@@ -27,13 +26,13 @@ interface PlanSelectionDialogProps {
 }
 
 export function PlanSelectionDialog({ 
-  customerId,
   onPlanSelected,
   isOpen,
   onClose,
   onSubscriptionSuccess
 }: PlanSelectionDialogProps) {
   const router = useRouter()
+  const storeCustomerId = useCustomerStore((state: CustomerState) => state.customerId)
   const pendingPlanId = useCustomerStore((state: CustomerState) => state.pendingPlanId)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -46,12 +45,12 @@ export function PlanSelectionDialog({
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!pendingPlanId || !customerId || !selectedPlan) return
+    if (!pendingPlanId || !storeCustomerId || !selectedPlan) return
 
     setIsSubmitting(true)
 
     try {
-      const result = await createSubscription(customerId, pendingPlanId)
+      const result = await createSubscription(storeCustomerId, pendingPlanId)
       
       if (!result.success || !result.subscription) {
         throw new Error(result.error || "Failed to create subscription")
@@ -73,7 +72,7 @@ export function PlanSelectionDialog({
       onClose()
       
       setTimeout(() => {
-        router.push(`/customer/${customerId}`)
+        router.push(`/customer/${storeCustomerId}`)
       }, 500)
     } catch (error) {
       toast.error("Error creating subscription", {
@@ -86,13 +85,13 @@ export function PlanSelectionDialog({
   }
 
   const apiRequestBody = {
-    customer_id: customerId || "cust_12345abcdef",
+    customer_id: storeCustomerId || "cust_12345abcdef",
     plan_id: pendingPlanId || "plan_basic",
   }
 
   const sampleResponse = {
     id: "sub_12345abcdef",
-    customer_id: customerId || "cust_12345abcdef",
+    customer_id: storeCustomerId || "cust_12345abcdef",
     plan_id: pendingPlanId || "plan_basic",
     status: "active",
     created_at: new Date().toISOString(),
@@ -159,7 +158,7 @@ export function PlanSelectionDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !customerId || !selectedPlan}>
+            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !storeCustomerId || !selectedPlan}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

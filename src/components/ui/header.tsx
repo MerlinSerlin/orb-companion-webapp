@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import { SignUpButton } from "./sign-up-button"
-import { CustomerRegistrationDialog } from "@/components/dialogs/customer-registration-dialog"
+import { CustomerRegistrationDialog } from "@/components/homepage/customer-registration-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export function Header() {

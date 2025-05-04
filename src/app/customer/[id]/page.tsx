@@ -54,10 +54,6 @@ export default async function CustomerDashboardPage({
       return result.customer; // Return the data part
     },
   });
-
-  // No longer need to extract data directly here for props
-  // const subscriptions: Subscription[] = subscriptionResult.subscriptions || [];
-  // const externalCustomerId = subscriptionResult.externalCustomerId;
   
   return (
     // Pass the dehydrated cache state to the boundary
