@@ -81,7 +81,7 @@ export async function getCustomerSubscriptions(customerId: string): Promise<GetS
 
     // Re-adding any type temporarily as SDK type is unknown
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const subscriptionsData: Subscription[] = orbResponse.data.map((sdkSub: any) => {
+    const subscriptionsData: Subscription[] = orbResponse.data.map((sdkSub: any) => { 
       const mappedSub = {
         id: sdkSub.id,
         name: sdkSub.name,
@@ -107,7 +107,7 @@ export async function getCustomerSubscriptions(customerId: string): Promise<GetS
     return {
       success: false,
       error: errorMessage,
-      subscriptions: null 
+      subscriptions: null
     }
   }
 }

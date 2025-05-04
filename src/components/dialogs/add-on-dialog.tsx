@@ -118,7 +118,7 @@ export function AddOnDialog({
   const handleIncrement = () => {
     setNewQuantity((prev) => prev + 1);
   };
-
+  
   const handleConfirm = async () => { 
     if (!priceIntervalId) { /* ... error ... */ return; }
     if (!effectiveDate || !currentPeriodStartDateStr || formatDateForInput(effectiveDate) <= currentPeriodStartDateStr) { /* ... error ... */ return; }
@@ -282,7 +282,7 @@ export function AddOnDialog({
             min={minDateForInput ?? undefined} // Set min date (day after start)
             className={cn(
               "flex justify-end h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-              "text-sm"
+              "text-sm" 
             )}
             disabled={isSubmitting || !minDateForInput} // Disable if min date couldn't be calculated
           />

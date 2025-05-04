@@ -11,15 +11,6 @@ interface SignUpButtonProps {
 }
 
 export function SignUpButton({ variant = "default", className, onClick }: SignUpButtonProps) {
-  // REMOVED store access and conditional rendering logic
-  /*
-  const { customer } = useCustomerStore()
-
-  // Don't render anything if user is already signed in
-  if (customer) {
-    return null
-  }
-  */
 
   // Always render the button, visibility controlled by parent (Header)
   return (

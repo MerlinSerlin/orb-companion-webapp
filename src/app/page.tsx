@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Header } from "@/components/ui/header"
+import React, { useState, useEffect } from "react"
 import { PricingPlans } from "@/components/plans/pricing-plans"
-import { CustomerRegistrationDialog } from "@/components/dialogs/customer-registration-dialog"
-import { PlanSelectionDialog } from "@/components/dialogs/plan-selection-dialog"
+import { CustomerRegistrationDialog } from "@/components/homepage/customer-registration-dialog"
+import { PlanSelectionDialog } from "@/components/homepage/plan-selection-dialog"
 import { EnterpriseContactDialog } from "@/components/dialogs/enterprise-contact-dialog"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
+import { Header } from "@/components/ui/header"
 
 // Define the possible dialog states
-type DialogMode = 'NONE' | 'REGISTRATION' | 'PLAN_SELECTION' | 'ENTERPRISE';
+type DialogState = "registration" | "planSelection" | "enterprise" | null
 
 export default function Home() {
   // --- Store State ---
@@ -19,13 +19,13 @@ export default function Home() {
   const setCustomerId = useCustomerStore((state: CustomerState) => state.setCustomerId);
 
   // --- Component State ---
-  const [dialogMode, setDialogMode] = useState<DialogMode>('NONE');
+  const [dialogMode, setDialogMode] = useState<DialogState>(null);
 
   // New single effect to manage dialog mode
   useEffect(() => {
     console.log('[Dialog Effect] Checking:', { pendingPlanId, customerId });
     if (!pendingPlanId) {
-      setDialogMode('NONE'); // No plan selected, no dialog
+      setDialogMode(null); // No plan selected, no dialog
       return;
     }
 
@@ -33,19 +33,19 @@ export default function Home() {
       // Enterprise plan selected
       if (customerId) {
         console.log('[Dialog Effect] Setting mode: ENTERPRISE');
-        setDialogMode('ENTERPRISE');
+        setDialogMode('enterprise');
       } else {
         console.log('[Dialog Effect] Setting mode: REGISTRATION (for Enterprise)');
-        setDialogMode('REGISTRATION');
+        setDialogMode('registration');
       }
     } else {
       // Non-enterprise plan selected
       if (customerId) {
         console.log('[Dialog Effect] Setting mode: PLAN_SELECTION');
-        setDialogMode('PLAN_SELECTION');
+        setDialogMode('planSelection');
       } else {
         console.log('[Dialog Effect] Setting mode: REGISTRATION (for Non-Enterprise)');
-        setDialogMode('REGISTRATION');
+        setDialogMode('registration');
       }
     }
   }, [pendingPlanId, customerId]); // Effect runs when plan or auth status changes
@@ -97,17 +97,16 @@ export default function Home() {
       </main>
       <CustomerRegistrationDialog 
         onRegistrationSuccess={handleRegistrationSuccess}
-        isOpen={dialogMode === 'REGISTRATION'}
+        isOpen={dialogMode === 'registration'}
         onClose={closeRegistration}
       />
       <PlanSelectionDialog 
-        customerId={customerId || ""}
-        isOpen={dialogMode === 'PLAN_SELECTION'}
+        isOpen={dialogMode === 'planSelection'}
         onClose={closePlanSelection}
         onSubscriptionSuccess={handleSuccessfulSubscription}
       />
       <EnterpriseContactDialog
-        open={dialogMode === 'ENTERPRISE'}
+        open={dialogMode === 'enterprise'}
         onOpenChange={(open) => {
           if (!open) {
             closeEnterpriseDialog();
