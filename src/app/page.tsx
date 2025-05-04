@@ -101,7 +101,6 @@ export default function Home() {
         onClose={closeRegistration}
       />
       <PlanSelectionDialog 
-        customerId={customerId || ""}
         isOpen={dialogMode === 'planSelection'}
         onClose={closePlanSelection}
         onSubscriptionSuccess={handleSuccessfulSubscription}
