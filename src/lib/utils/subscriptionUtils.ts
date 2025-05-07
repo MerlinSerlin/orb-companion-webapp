@@ -1,4 +1,4 @@
-import type { Subscription, PriceInterval } from "@/lib/types";
+import type { Subscription, PriceInterval, FixedFeeQuantityTransition } from "@/lib/types";
 import { formatNumber, formatDate } from "./formatters";
 
 // Define the structure for the derived entitlement feature
@@ -14,17 +14,14 @@ export interface EntitlementFeature {
   allFutureTransitions?: FixedFeeQuantityTransition[] | undefined;
 }
 
-// Define the type for fixed fee quantity transitions within the interval
-interface FixedFeeQuantityTransition {
-  effective_date: string;
-  quantity: number;
-  price_id?: string;
-}
-
-// Add the transition field to PriceInterval if not already defined globally (or refine PriceInterval type)
-// This assumes PriceInterval type might be extended here or globally
+// The ExtendedPriceInterval might be redundant if PriceInterval from types.ts already has fixed_fee_quantity_transitions
+// For now, let's assume PriceInterval from types.ts is sufficient or ExtendedPriceInterval has other uses not shown.
+// If ExtendedPriceInterval is solely to add fixed_fee_quantity_transitions, it could be removed and direct casting used.
+// For safety, keeping it but ensuring it uses the imported type.
 interface ExtendedPriceInterval extends PriceInterval {
-  fixed_fee_quantity_transitions?: FixedFeeQuantityTransition[] | null;
+  // This property should be compatible if PriceInterval from types.ts has the same (or compatible) field
+  // and FixedFeeQuantityTransition is correctly imported.
+  fixed_fee_quantity_transitions?: FixedFeeQuantityTransition[] | null; 
 }
 
 export function deriveEntitlementsFromSubscription(subscription: Subscription | null): EntitlementFeature[] {
@@ -36,8 +33,10 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
   const today = new Date().toISOString().split('T')[0]; // Get today's date for comparison
 
   subscription.price_intervals.forEach(interval => {
-    const extendedInterval = interval as ExtendedPriceInterval;
-    const price = interval.price;
+    // Cast to ExtendedPriceInterval if it provides a more specific version of fixed_fee_quantity_transitions
+    // or if direct access to interval.fixed_fee_quantity_transitions is fine (if type is directly on PriceInterval)
+    const currentInterval = interval as ExtendedPriceInterval; // Use the potentially more specific type
+    const price = currentInterval.price;
 
     // DEBUGGING: Log the price object being processed
     if (price?.id === "LbwJF4Vpm6rmGRFh") { // Check for your specific price ID
@@ -157,11 +156,13 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
 
     // --- Determine statusText and allFutureTransitions --- 
     if (price.price_type === 'fixed_price') {
-        if (extendedInterval.fixed_fee_quantity_transitions && extendedInterval.fixed_fee_quantity_transitions.length > 0) {
-            const futureTransitions = extendedInterval.fixed_fee_quantity_transitions.filter(
-                t => t.effective_date > today // Only consider future transitions
+        if (currentInterval.fixed_fee_quantity_transitions && currentInterval.fixed_fee_quantity_transitions.length > 0) {
+            const futureTransitions = currentInterval.fixed_fee_quantity_transitions.filter(
+                (t: FixedFeeQuantityTransition) => t.effective_date > today // Only consider future transitions
             );
-            futureTransitions.sort((a, b) => new Date(a.effective_date).getTime() - new Date(b.effective_date).getTime());
+            futureTransitions.sort((a: FixedFeeQuantityTransition, b: FixedFeeQuantityTransition) => 
+                new Date(a.effective_date).getTime() - new Date(b.effective_date).getTime()
+            );
             
             if (futureTransitions.length > 0) {
                 const nextChange = futureTransitions[0];
@@ -170,12 +171,12 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
             }
         }
     } else if (price.price_type === 'usage_price') {
-        if (interval.start_date) {
+        if (currentInterval.start_date) {
             // Only show statusText if the start date is in the future
-            if (interval.start_date > today) { 
-                statusText = `Starts on ${formatDate(interval.start_date)}`;
+            if (currentInterval.start_date > today) { 
+                statusText = `Starts on ${formatDate(currentInterval.start_date)}`;
             }
-            // If interval.start_date is today or in the past, statusText remains null
+            // If currentInterval.start_date is today or in the past, statusText remains null
         }
     }
 
@@ -183,7 +184,7 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
 
     entitlementFeatures.push({
       priceId: price.id,
-      priceIntervalId: interval.id,
+      priceIntervalId: currentInterval.id,
       name: displayName,
       baseValue: baseValue,
       overageInfo: overageInfo,
