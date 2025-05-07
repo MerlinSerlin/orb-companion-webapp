@@ -1,11 +1,9 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Info, CheckCircle2, PlusCircle, CalendarDays, Trash2 } from 'lucide-react';
+import { Info, CheckCircle2, PlusCircle, Trash2 } from 'lucide-react';
 import type { EntitlementFeature } from '@/lib/utils/subscriptionUtils';
 import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatDate, formatNumber } from '@/lib/utils/formatters';
 
 interface EntitlementsCardProps {
   features: EntitlementFeature[];
@@ -31,6 +29,10 @@ export function EntitlementsCard({ features, onOpenAddOnDialog, onOpenAddObserva
       <CardContent>
         <ul className="space-y-4">
           {features.map((feature, index) => {
+            // Get the next transition if available (the one that forms the statusText)
+            const nextTransition = feature.allFutureTransitions && feature.allFutureTransitions.length > 0 
+                                   ? feature.allFutureTransitions[0] 
+                                   : null;
             return (
               <li key={index} className="flex items-start justify-between border-b pb-3 pt-1 last:border-b-0 text-sm">
                 {/* Left side: Icon, Name */}
@@ -64,48 +66,28 @@ export function EntitlementsCard({ features, onOpenAddOnDialog, onOpenAddObserva
                     </Button>
                   )}
 
-                  {/* Display statusText and Popover for allFutureTransitions */}
+                  {/* Display statusText and a direct Remove button for the NEXT transition */} 
                   {feature.statusText && (
                     <div className="flex items-center text-xs text-blue-600 dark:text-blue-400 mt-1 space-x-1">
                       <Info className="h-3 w-3 flex-shrink-0" />
                       <span>
                         {feature.statusText}
                       </span>
-                      {feature.allFutureTransitions && feature.allFutureTransitions.length > 0 && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-5 w-5 p-0 ml-1">
-                              <CalendarDays className="h-3 w-3" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-3 text-xs" align="end">
-                            <div className="font-medium mb-2 pb-1 border-b">All Scheduled Changes:</div>
-                            <ul className="space-y-1.5">
-                              {feature.allFutureTransitions.map((transition, tIndex) => (
-                                <li key={tIndex} className="flex items-center justify-between space-x-2">
-                                  <span>
-                                    Change to {formatNumber(transition.quantity)} on {formatDate(transition.effective_date)}
-                                  </span>
-                                  {onRemoveScheduledTransition && feature.priceIntervalId && (
-                                    <Button 
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-5 w-5 p-0 text-destructive hover:text-destructive"
-                                      onClick={() => {
-                                        if (feature.priceIntervalId) { // Double check for safety, though covered by outer if
-                                            onRemoveScheduledTransition(feature.priceIntervalId, transition.effective_date);
-                                        }
-                                      }}
-                                      title="Remove scheduled change"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          </PopoverContent>
-                        </Popover>
+                      {/* Direct Remove button for the next scheduled change */} 
+                      {onRemoveScheduledTransition && feature.priceIntervalId && nextTransition && (
+                        <Button 
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 p-0 ml-1 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            if (feature.priceIntervalId && nextTransition) { // Ensure variables are still valid
+                                onRemoveScheduledTransition(feature.priceIntervalId, nextTransition.effective_date);
+                            }
+                          }}
+                          title="Remove this scheduled change"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       )}
                     </div>
                   )}

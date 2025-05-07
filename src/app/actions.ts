@@ -354,7 +354,7 @@ export async function editPriceIntervalQuantity(
     console.log(`[Action] Successfully edited price interval quantity for interval: ${priceIntervalId}`);
     
     // Consider revalidation here if needed
-    // revalidatePath(`/customer/${customerId}`); 
+    // revalidatePath(`/customers/${customerId}`); 
 
     return { success: true };
 
@@ -446,7 +446,7 @@ export async function addPriceInterval(
 
     console.log(`[Action] Successfully added price ${priceId} to subscription ${subscriptionId} starting ${effectiveStartDate}`);
     // Consider revalidation here
-    // revalidatePath(`/customer/${customerId}`); 
+    // revalidatePath(`/customers/${customerId}`); 
 
     return { success: true };
 

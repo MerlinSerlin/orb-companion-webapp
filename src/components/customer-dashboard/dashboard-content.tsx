@@ -11,7 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types";
-import { EditFixedFeePriceDialog } from "./dialogs/edit-fixed-fee-price-dialog";
+// import { EditFixedFeePriceDialog } from "./dialogs/edit-fixed-fee-price-dialog"; // Comment out or remove old
+import { ManageFixedPriceItemDialog } from "./dialogs/manage-fixed-price-item-dialog"; // Add new dialog import
 import { AddNewFloatingPriceDialog } from "./dialogs/add-new-floating-price-dialog";
 import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
 import { useQueryClient } from '@tanstack/react-query'
@@ -95,11 +96,16 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
     setIsAddFeatureDialogOpen(true);
   };
 
-  // --- Common Success Handler for Dialogs --- 
-  const handleDialogSuccess = () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions', customerIdProp] });
-      setIsAdjustAddOnDialogOpen(false);
-      setIsAddFeatureDialogOpen(false);
+  // --- Data Refresh Function ---
+  const refreshSubscriptionData = () => {
+    queryClient.invalidateQueries({ queryKey: ['subscriptions', customerIdProp] });
+  };
+  
+  // This success handler is for simpler dialogs that should close on success
+  const handleDialogSuccessAndClose = () => {
+      refreshSubscriptionData(); // Also uses the refresh function
+      setIsAdjustAddOnDialogOpen(false); 
+      setIsAddFeatureDialogOpen(false); 
   };
 
   // --- Handler to Remove a Scheduled Transition --- 
@@ -126,7 +132,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
         toast.success("Scheduled Change Removed", {
           description: `The change scheduled for ${formatDate(effectiveDate)} has been removed.`,
         });
-        queryClient.invalidateQueries({ queryKey: ['subscriptions', customerIdProp] });
+        refreshSubscriptionData();
       } else {
         throw new Error(result.error || "Failed to remove scheduled change.");
       }
@@ -293,18 +299,21 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
       {/* --- Render Dialogs --- */}
       
       {/* Adjust Add-On Dialog (Existing) */}
-      {activeSubscription && concurrentBuildsFeatureData && concurrentBuildsFeatureData.priceIntervalId && ( 
-        <EditFixedFeePriceDialog
+      {activeSubscription && concurrentBuildsFeatureData && concurrentBuildsFeatureData.priceIntervalId && (
+        <ManageFixedPriceItemDialog
           open={isAdjustAddOnDialogOpen}
           onOpenChange={setIsAdjustAddOnDialogOpen}
           itemName="Concurrent Build"
+          dialogTitle="Adjust Concurrent Build Quantity"
+          dialogDescription="Set the total number of concurrent builds effective from the chosen date."
           currentQuantity={concurrentBuildsFeatureData.rawQuantity ?? 0}
           addOnPrice={concurrentBuildsFeatureData.rawOveragePrice ?? 0}
           subscriptionId={activeSubscription.id}
-          priceIntervalId={concurrentBuildsFeatureData.priceIntervalId} 
-          currentPeriodStartDate={activeSubscription.current_period_start} 
-          activeSubscription={activeSubscription} 
-          onSuccess={handleDialogSuccess}
+          priceIntervalId={concurrentBuildsFeatureData.priceIntervalId}
+          currentPeriodStartDate={activeSubscription.current_period_start}
+          activeSubscription={activeSubscription}
+          onScheduleSuccess={refreshSubscriptionData}
+          onRemoveSuccess={refreshSubscriptionData}
         />
       )}
       
@@ -316,7 +325,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
           itemName="Observability Events"
           priceIdToAdd={OBSERVABILITY_EVENTS_PRICE_ID}
           subscriptionId={activeSubscription.id}
-          onSuccess={handleDialogSuccess}
+          onSuccess={handleDialogSuccessAndClose}
         />
       )}
     </>

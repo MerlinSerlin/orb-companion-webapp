@@ -1,5 +1,6 @@
 import type { Subscription, PriceInterval, FixedFeeQuantityTransition } from "@/lib/types";
 import { formatNumber, formatDate } from "./formatters";
+import { DESIRED_ENTITLEMENT_ORDER } from "../../components/plans/plan-data";
 
 // Define the structure for the derived entitlement feature
 export interface EntitlementFeature {
@@ -193,6 +194,27 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
       statusText: statusText,
       allFutureTransitions: allFutureTransitions,
     });
+  });
+
+  // Sort the features based on the DESIRED_ENTITLEMENT_ORDER
+  entitlementFeatures.sort((a, b) => {
+    const indexA = DESIRED_ENTITLEMENT_ORDER.indexOf(a.name);
+    const indexB = DESIRED_ENTITLEMENT_ORDER.indexOf(b.name);
+
+    // If both items are in the desired order list, sort by their index
+    if (indexA !== -1 && indexB !== -1) {
+      return indexA - indexB;
+    }
+    // If only A is in the list, A comes first
+    if (indexA !== -1) {
+      return -1;
+    }
+    // If only B is in the list, B comes first
+    if (indexB !== -1) {
+      return 1;
+    }
+    // If neither is in the list, keep their relative order (or sort by name as a fallback)
+    return a.name.localeCompare(b.name);
   });
 
   // Move "Concurrent Builds" to the end if it exists
