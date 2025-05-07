@@ -598,7 +598,7 @@ export async function removeFixedFeeTransition(
     edit: [
       {
         price_interval_id: priceIntervalId,
-        fixed_fee_quantity_transitions: updatedTransitions.length > 0 ? updatedTransitions : null, 
+        fixed_fee_quantity_transitions: updatedTransitions.length > 0 ? updatedTransitions : [], 
       },
     ],
   };
