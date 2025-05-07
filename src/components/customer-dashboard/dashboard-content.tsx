@@ -11,13 +11,18 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types";
-import { AddOnDialog } from "@/components/dialogs/add-on-dialog";
+import { EditFixedFeePriceDialog } from "./dialogs/edit-fixed-fee-price-dialog";
+import { AddNewFloatingPriceDialog } from "./dialogs/add-new-floating-price-dialog";
+import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
 import { useQueryClient } from '@tanstack/react-query'
 import { deriveEntitlementsFromSubscription } from "@/lib/utils/subscriptionUtils";
 import { useCustomerSubscriptions, useCustomerDetails } from "@/hooks/useCustomerData";
 import { SubscriptionDetailsCard } from "./cards/subscription-details-card";
 import { EntitlementsCard } from "./cards/entitlements-card";
 import { CustomerPortalCard } from "./cards/customer-portal-card";
+import { removeFixedFeeTransition } from "@/app/actions";
+import { toast } from "sonner";
+import { formatDate } from "@/lib/utils/formatters";
 
 // Exporting the type for use in the server component page
 export type { Subscription };
@@ -30,8 +35,9 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
   const router = useRouter()
   const queryClient = useQueryClient()
   
-  // --- State for Dialog --- 
-  const [isAddOnDialogOpen, setIsAddOnDialogOpen] = useState(false);
+  // --- State for Dialogs --- 
+  const [isAdjustAddOnDialogOpen, setIsAdjustAddOnDialogOpen] = useState(false);
+  const [isAddFeatureDialogOpen, setIsAddFeatureDialogOpen] = useState(false);
 
   // Use the custom hook for customer details
   const { 
@@ -83,6 +89,54 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
       // Ensure features includes priceIntervalId
       return features.find(f => f.name === 'Concurrent Builds');
   }, [features]);
+
+  // --- Handler to open the Add New Feature dialog --- 
+  const handleOpenAddObservability = () => {
+    setIsAddFeatureDialogOpen(true);
+  };
+
+  // --- Common Success Handler for Dialogs --- 
+  const handleDialogSuccess = () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions', customerIdProp] });
+      setIsAdjustAddOnDialogOpen(false);
+      setIsAddFeatureDialogOpen(false);
+  };
+
+  // --- Handler to Remove a Scheduled Transition --- 
+  const handleRemoveScheduledTransition = async (priceIntervalId: string, effectiveDate: string) => {
+    if (!activeSubscription) {
+      toast.error("Error", { description: "Active subscription not found." });
+      return;
+    }
+    if (!priceIntervalId) {
+        toast.error("Error", { description: "Price interval ID is missing for the transition." });
+        return;
+    }
+
+    console.log(`[UI] Attempting to remove transition for interval ${priceIntervalId} on ${effectiveDate}`);
+
+    try {
+      const result = await removeFixedFeeTransition(
+        activeSubscription.id,
+        priceIntervalId,
+        effectiveDate
+      );
+
+      if (result.success) {
+        toast.success("Scheduled Change Removed", {
+          description: `The change scheduled for ${formatDate(effectiveDate)} has been removed.`,
+        });
+        queryClient.invalidateQueries({ queryKey: ['subscriptions', customerIdProp] });
+      } else {
+        throw new Error(result.error || "Failed to remove scheduled change.");
+      }
+    } catch (error) {
+      console.error("Error removing scheduled transition:", error);
+      toast.error("Removal Failed", { 
+        description: error instanceof Error ? error.message : "An unknown error occurred."
+      });
+    }
+  };
 
   // --- Render Logic --- 
 
@@ -190,7 +244,9 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
                 
                 <EntitlementsCard 
                   features={features} 
-                  onOpenAddOnDialog={() => setIsAddOnDialogOpen(true)} 
+                  onOpenAddOnDialog={() => setIsAdjustAddOnDialogOpen(true)}
+                  onOpenAddObservabilityDialog={handleOpenAddObservability}
+                  onRemoveScheduledTransition={handleRemoveScheduledTransition}
                 />
               </div>
             </TabsContent>
@@ -234,21 +290,33 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
         )}
       </main>
 
-      {/* --- Render the Add-On Dialog --- */}
-      {activeSubscription && concurrentBuildsFeatureData && concurrentBuildsFeatureData.priceIntervalId && ( // Ensure priceIntervalId exists
-        <AddOnDialog
-          open={isAddOnDialogOpen}
-          onOpenChange={setIsAddOnDialogOpen}
+      {/* --- Render Dialogs --- */}
+      
+      {/* Adjust Add-On Dialog (Existing) */}
+      {activeSubscription && concurrentBuildsFeatureData && concurrentBuildsFeatureData.priceIntervalId && ( 
+        <EditFixedFeePriceDialog
+          open={isAdjustAddOnDialogOpen}
+          onOpenChange={setIsAdjustAddOnDialogOpen}
           itemName="Concurrent Build"
           currentQuantity={concurrentBuildsFeatureData.rawQuantity ?? 0}
           addOnPrice={concurrentBuildsFeatureData.rawOveragePrice ?? 0}
           subscriptionId={activeSubscription.id}
           priceIntervalId={concurrentBuildsFeatureData.priceIntervalId} 
-          currentPeriodStartDate={activeSubscription.current_period_start} // Pass current period start date
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['subscriptions', customerIdProp] });
-            setIsAddOnDialogOpen(false);
-          }}
+          currentPeriodStartDate={activeSubscription.current_period_start} 
+          activeSubscription={activeSubscription} 
+          onSuccess={handleDialogSuccess}
+        />
+      )}
+      
+      {/* Add New Feature Dialog (New) */}
+      {activeSubscription && (
+        <AddNewFloatingPriceDialog 
+          open={isAddFeatureDialogOpen}
+          onOpenChange={setIsAddFeatureDialogOpen}
+          itemName="Observability Events"
+          priceIdToAdd={OBSERVABILITY_EVENTS_PRICE_ID}
+          subscriptionId={activeSubscription.id}
+          onSuccess={handleDialogSuccess}
         />
       )}
     </>

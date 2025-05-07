@@ -98,24 +98,63 @@ export interface PriceTier {
   unit_amount?: string | null;
 }
 
+// Define config types (if not already present or need refinement)
+export interface PackageConfig {
+  package_amount: string;
+  package_size: number;
+}
+
+export interface TieredConfig {
+  tiers: PriceTier[];
+}
+
+export interface UnitConfig {
+  unit_amount?: string | null;
+}
+
+// Define TieredPackageTier specifically for tiered_package_config
+export interface TieredPackageTier {
+  first_unit?: number | null; // Or tier_lower_bound if API requires that
+  last_unit?: number | null;  // Or tier_upper_bound
+  package_amount: string;    // Cost for packages in this tier
+  package_size: number;      // Size of packages in this tier
+}
+
+export interface TieredPackageConfig {
+  tiers: TieredPackageTier[];
+}
+
 export interface Price {
   id: string;
   name: string;
-  price_type: 'fixed_price' | 'usage_price' | string; // Allow other strings
-  model_type: 'unit' | 'tiered' | string; // Allow other strings
+  price_type: 'fixed_price' | 'usage_price' | string; 
+  model_type: 'unit' | 'tiered' | 'package' | 'matrix' | 'tiered_package' | 'grouped_tiered' | string; 
   currency: string;
   item?: Item | null;
   fixed_price_quantity?: number | null;
-  tiered_config?: { tiers: PriceTier[] } | null;
-  unit_config?: { unit_amount?: string | null } | null;
-  // Add other price fields if needed
+  package_config?: PackageConfig | null; 
+  tiered_config?: TieredConfig | null; 
+  unit_config?: UnitConfig | null; 
+  // Add tiered_package_config
+  tiered_package_config?: TieredPackageConfig | null;
 }
 
 // Add type for the quantity transition object
-export interface FixedFeeQuantityTransition {
+export interface FixedPriceQuantityTransition {
   effective_date: string; 
   quantity: number;
   price_id?: string; // Optional price_id as seen in logs
+  [key: string]: string | number | undefined; // Add index signature
+}
+
+// Ensure this interface name matches what's used elsewhere, e.g., FixedFeeQuantityTransition
+// If it's FixedFeeQuantityTransition, adjust the name above.
+// Assuming it might be used as FixedFeeQuantityTransition based on previous context:
+export interface FixedFeeQuantityTransition { 
+  effective_date: string;
+  quantity: number;
+  price_id?: string;
+  [key: string]: string | number | undefined; // Add index signature
 }
 
 export interface PriceInterval {
@@ -123,9 +162,7 @@ export interface PriceInterval {
   start_date?: string | null;
   end_date?: string | null;
   price?: Price | null;
-  // Add the new field, allowing null or array
   fixed_fee_quantity_transitions?: FixedFeeQuantityTransition[] | null; 
-  // Add other interval fields if needed
 }
 
 export interface Plan {

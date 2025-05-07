@@ -13,59 +13,57 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input"; // Example input
 import { Label } from "@/components/ui/label"; // Example label
-// import { Calendar } from "@/components/ui/calendar"; // Add Calendar
-import {
-  // Popover,
-  // PopoverContent,
-  // PopoverTrigger,
-} from "@/components/ui/popover"; // Add Popover components
 import { cn } from "@/lib/utils"; // Add cn utility
-// import { format, parse, addDays } from "date-fns"; // Add date-fns format and addDays
 import { editPriceIntervalQuantity } from "@/app/actions"; // Updated import name
 import { toast } from "sonner"; // Import toast
 import { Loader2, Minus, Plus } from "lucide-react"; // Added Minus, Plus
-// import { Calendar as CalendarIcon } from "lucide-react"; // Add CalendarIcon
-// import { updatePriceQuantity } from "@/app/actions"; 
-import { ApiPreviewDialog } from "./api-preview-dialog";
+import { ApiPreviewDialog } from "../dialogs/api-preview-dialog";
+// Import Subscription and related types (Removed PriceInterval)
+import type { Subscription, FixedFeeQuantityTransition } from "@/lib/types"; 
+
 // Define JsonValue type based on ApiPreviewDialog props
 type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
 
-interface AddOnDialogProps {
+// Rename interface
+interface EditFixedFeePriceDialogProps { 
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // Add other props as needed, e.g., current quantity, item name, onConfirm callback
   itemName?: string; 
   currentQuantity?: number;
-  addOnPrice: number; // Add prop for price per add-on unit
-  subscriptionId: string; // Added subscriptionId prop
-  priceIntervalId?: string; // Added priceIntervalId prop back
-  currentPeriodStartDate?: string | null; // Added prop (nullable)
-  onSuccess?: () => void; // Added onSuccess callback prop
-  // Remove effectiveDate string prop, date will be selected
-  // effectiveDate: string; 
-  // Update onConfirm signature to include the selected date
-  // onConfirm?: (details: { quantityToAdd: number; effectiveDate: Date }) => void;
+  addOnPrice: number; 
+  subscriptionId: string; 
+  priceIntervalId?: string; 
+  currentPeriodStartDate?: string | null; 
+  onSuccess?: () => void; 
+  activeSubscription?: Subscription | null; 
 }
 
-export function AddOnDialog({ 
+// Rename component export
+export function EditFixedFeePriceDialog({ 
   open, 
   onOpenChange, 
-  itemName = "Add-on", // Default item name
+  itemName = "Add-on", 
   currentQuantity = 0, 
-  addOnPrice, // Accept addOnPrice
-  subscriptionId, // Accept subscriptionId
-  priceIntervalId, // Accept priceIntervalId
-  currentPeriodStartDate, // Accept prop
-  onSuccess, // Accept onSuccess callback
-  // Remove effectiveDate string prop, date will be selected
-  // effectiveDate: string; 
-}: AddOnDialogProps) {
+  addOnPrice, 
+  subscriptionId, 
+  priceIntervalId, 
+  currentPeriodStartDate, 
+  onSuccess, 
+  activeSubscription, 
+}: EditFixedFeePriceDialogProps) {
   
   // State for the *new target quantity*
   const [newQuantity, setNewQuantity] = React.useState<number>(currentQuantity);
   const [effectiveDate, setEffectiveDate] = React.useState<Date | null>(null); 
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false); 
   
+  // --- Helper to get existing transitions --- 
+  const getExistingTransitions = React.useCallback((): FixedFeeQuantityTransition[] => {
+    if (!activeSubscription?.price_intervals || !priceIntervalId) return [];
+    const interval = activeSubscription.price_intervals.find(pi => pi.id === priceIntervalId);
+    return interval?.fixed_fee_quantity_transitions ?? [];
+  }, [activeSubscription, priceIntervalId]);
+
   const formatDateForInput = (date: Date): string => {
     // Ensure formatting uses UTC to avoid timezone shifts when comparing/setting min
     const year = date.getUTCFullYear();
@@ -120,8 +118,14 @@ export function AddOnDialog({
   };
   
   const handleConfirm = async () => { 
-    if (!priceIntervalId) { /* ... error ... */ return; }
-    if (!effectiveDate || !currentPeriodStartDateStr || formatDateForInput(effectiveDate) <= currentPeriodStartDateStr) { /* ... error ... */ return; }
+    if (!priceIntervalId) {
+      toast.error("Error", { description: "Price interval ID is missing.", duration: 3000 });
+      return;
+    }
+    if (!effectiveDate || !currentPeriodStartDateStr || formatDateForInput(effectiveDate) <= currentPeriodStartDateStr) {
+      toast.error("Invalid Date", { description: "Effective date must be after the current period start.", duration: 3000 });
+      return;
+    }
     // No change check
     if (newQuantity === currentQuantity) {
       toast.info("No Change", { description: "The quantity has not been changed.", duration: 3000 });
@@ -132,17 +136,35 @@ export function AddOnDialog({
     setIsSubmitting(true); 
     const effectiveDateStr = formatDateForInput(effectiveDate);
 
+    // --- Get existing transitions and combine with the new one --- 
+    const existingTransitions = getExistingTransitions();
+    const newTransition: FixedFeeQuantityTransition = {
+      quantity: newQuantity, 
+      effective_date: effectiveDateStr 
+    };
+
+    // Combine, removing any potential duplicate effective dates (keep the latest new one)
+    const allTransitions = [
+      ...existingTransitions.filter(t => t.effective_date !== effectiveDateStr), 
+      newTransition
+    ].sort((a, b) => a.effective_date.localeCompare(b.effective_date)); // Sort chronologically
+    
+    console.log("[EditFixedFeePriceDialog] Sending Transitions:", allTransitions);
+
     try {
+      // Pass the full list of transitions to the action
       const result = await editPriceIntervalQuantity(
         subscriptionId,
         priceIntervalId, 
-        newQuantity, // Send the new total quantity
-        effectiveDateStr
+        allTransitions // Pass the combined list
+        // Remove newQuantity and effectiveDateStr as separate args
+        // newQuantity, 
+        // effectiveDateStr
       );
 
       if (result.success) {
         toast.success(`${itemName} Quantity Update Scheduled`, {
-          description: `Set to ${newQuantity} effective ${effectiveDateStr}.`,
+          description: `Set to ${newQuantity} effective ${effectiveDateStr}. Existing schedules preserved.`, // Update description
           duration: 5000,
         });
         if (onSuccess) onSuccess();
@@ -151,9 +173,14 @@ export function AddOnDialog({
       }
     } catch (error) {
       console.error(`Error updating ${itemName} quantity:`, error);
-      toast.error("Update Failed", { /* ... */ });
+      toast.error("Update Failed", { 
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        duration: 5000
+       });
     } finally {
       setIsSubmitting(false); 
+      // Only close if successful?
+      // onOpenChange(false); // Consider moving this inside success block or relying on onSuccess
     }
   };
 
@@ -173,25 +200,27 @@ export function AddOnDialog({
 
   // --- Construct API Preview Data ---
   const apiEndpoint = `https://api.withorb.com/v1/subscriptions/${subscriptionId}/price_intervals`;
+  // Update payload preview to show the full transition list
   const apiPayload = React.useMemo(() => {
     if (!priceIntervalId || !effectiveDate) {
-      // Cast empty object to satisfy the prop type
       return {} as Record<string, JsonValue>; 
     }
+    const existingTransitions = getExistingTransitions();
+    const newTransition = { quantity: newQuantity, effective_date: formatDateForInput(effectiveDate) };
+    const allTransitions = [
+      ...existingTransitions.filter(t => t.effective_date !== newTransition.effective_date),
+      newTransition
+    ].sort((a, b) => a.effective_date.localeCompare(b.effective_date));
+    
     return {
       edit: [
         {
           price_interval_id: priceIntervalId,
-          fixed_fee_quantity_transitions: [
-            {
-              quantity: newQuantity,
-              effective_date: formatDateForInput(effectiveDate), // Use formatted date
-            },
-          ],
+          fixed_fee_quantity_transitions: allTransitions, // Show the full list
         },
       ],
     };
-  }, [priceIntervalId, newQuantity, effectiveDate]); // Dependencies for payload
+  }, [priceIntervalId, newQuantity, effectiveDate, getExistingTransitions]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
