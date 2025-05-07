@@ -72,7 +72,12 @@ export function PlanSelectionDialog({
       onClose()
       
       setTimeout(() => {
-        router.push(`/customer/${storeCustomerId}`)
+        if (storeCustomerId) {
+          router.push(`/customers/${storeCustomerId}`)
+        } else {
+          console.warn("Customer ID not found in store after subscription, redirecting to homepage.")
+          router.push("/")
+        }
       }, 500)
     } catch (error) {
       toast.error("Error creating subscription", {
