@@ -39,12 +39,6 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
     const currentInterval = interval as ExtendedPriceInterval; // Use the potentially more specific type
     const price = currentInterval.price;
 
-    // DEBUGGING: Log the price object being processed
-    if (price?.id === "LbwJF4Vpm6rmGRFh") { // Check for your specific price ID
-        console.log("[DEBUG] Processing Observability Price:", JSON.stringify(price, null, 2));
-        console.log("[DEBUG] Tiered Package Config:", JSON.stringify(price.tiered_package_config, null, 2));
-    }
-
     if (!price || !price.item || price.item.name === "Platform Fee") {
       return; // Skip Platform Fee
     }
