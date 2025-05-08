@@ -17,25 +17,46 @@ export async function POST(req: NextRequest) {
   });
 
   const rawBody = await req.text();
-  const signature = req.headers.get('X-Orb-Signature-V1');
+  // Using X-Orb-Signature as per the Flask example
+  const signatureFromHeader = req.headers.get('X-Orb-Signature'); 
   const timestamp = req.headers.get('X-Orb-Timestamp');
 
-  if (!signature || !timestamp) {
-    console.log('Signature or timestamp missing. Signature:', signature, 'Timestamp:', timestamp);
+  if (!signatureFromHeader || !timestamp) {
+    console.log('Signature or timestamp missing. Header Signature:', signatureFromHeader, 'Timestamp:', timestamp);
     return NextResponse.json({ error: 'Missing Orb signature or timestamp' }, { status: 400 });
   }
 
-  // Verify the signature
-  const signedPayload = `${timestamp}.${rawBody}`;
-  const expectedSignature = crypto
-    .createHmac('sha256', ORB_WEBHOOK_SECRET)
-    .update(signedPayload)
-    .digest('hex');
+  // Construct the signed payload according to the Flask example
+  const signedPayloadConstruction = `v1:${timestamp}:${rawBody}`;
+  
+  const hmac = crypto.createHmac('sha256', ORB_WEBHOOK_SECRET);
+  hmac.update(signedPayloadConstruction, 'utf-8');
+  const digest = hmac.digest('hex');
+  // Add v1= prefix to our generated signature for comparison
+  const expectedSignature = `v1=${digest}`;
 
-  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
-    console.warn('Invalid Orb webhook signature.');
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
+  console.log(`Received Signature: ${signatureFromHeader}`);
+  console.log(`Expected Signature: ${expectedSignature}`);
+  console.log(`Timestamp: ${timestamp}`);
+  console.log(`Signed Payload Construction: v1:${timestamp}:<BODY_CONTENT>`);
+
+  // Note: crypto.timingSafeEqual requires buffers of the same length.
+  // It's good practice, but ensure both strings are always similar in structure.
+  try {
+    if (!crypto.timingSafeEqual(Buffer.from(signatureFromHeader), Buffer.from(expectedSignature))) {
+      console.warn('Invalid Orb webhook signature (timingSafeEqual failed).');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
+    }
+  } catch (e) {
+      console.error('Error during timingSafeEqual comparison (likely buffer length mismatch):', e);
+      // Fallback to direct comparison if timingSafeEqual throws (e.g. due to length mismatch before actual content check)
+      if (signatureFromHeader !== expectedSignature) {
+        console.warn('Invalid Orb webhook signature (direct comparison failed).');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
+      }
   }
+  
+  console.log('Orb webhook signature verified successfully.');
 
   // Signature is valid, parse the JSON body
   let event;
