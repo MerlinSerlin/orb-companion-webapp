@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { editPriceIntervalQuantity, removeFixedFeeTransition } from "@/app/actions"; // Assuming removeFixedFeeTransition is here
 import { toast } from "sonner";
 import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
-import { ApiPreviewDialog } from "../../dialogs/api-preview-dialog"; // Corrected import path
+import { ApiPreviewDialog } from "../../dialogs/api-preview-dialog";
 import type { Subscription, FixedFeeQuantityTransition } from "@/lib/types";
 import { formatNumber, formatDate } from "@/lib/utils/formatters";
 
@@ -189,7 +189,7 @@ export function ManageFixedPriceItemDialog({
   // --- "Manage Scheduled" Tab Logic ---
   const futureTransitions = React.useMemo(() => {
     const today = formatDateForInputInternal(new Date());
-    return existingTransitions.filter(t => t.effective_date > today);
+    return (existingTransitions || []).filter(t => t.effective_date > today);
   }, [existingTransitions, formatDateForInputInternal]);
 
   const handleRemoveTransition = async (effectiveDateToRemove: string) => {
@@ -350,26 +350,52 @@ export function ManageFixedPriceItemDialog({
               <p className="text-sm text-muted-foreground text-center py-4">No future changes scheduled for {itemName.toLowerCase()}.</p>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                {futureTransitions.map((transition) => (
-                  <div key={transition.effective_date} className="flex items-center justify-between p-2 border rounded-md text-sm">
-                    <div>
-                      Change to <span className="font-semibold">{formatNumber(transition.quantity)}</span> on <span className="font-semibold">{formatDate(transition.effective_date)}</span>
+                {futureTransitions.map((transition) => {
+                  const lineItemRemovePayload = {
+                    edit: [{
+                      price_interval_id: priceIntervalId,
+                      fixed_fee_quantity_transitions: (existingTransitions || []).filter(
+                        t => t.effective_date !== transition.effective_date
+                      )
+                    }]
+                  } as Record<string, JsonValue>;
+
+                  return (
+                    <div key={transition.effective_date} className="flex items-center justify-between p-2 border rounded-md text-sm">
+                      <div>
+                        Change to <span className="font-semibold">{formatNumber(transition.quantity)}</span> on <span className="font-semibold">{formatDate(transition.effective_date)}</span>
+                      </div>
+                      <div className="flex items-center space-x-1"> 
+                        <ApiPreviewDialog
+                          payload={lineItemRemovePayload}
+                          endpoint={`https://api.withorb.com/v1/subscriptions/${subscriptionId}/price_intervals`}
+                          method="POST"
+                          title={`Preview Removing Change for: ${formatDate(transition.effective_date)}`}
+                          description={`This shows the API call to remove the scheduled change effective ${formatDate(transition.effective_date)}.`}
+                          buttonVariant="ghost" 
+                          buttonSize="icon" 
+                          buttonText="" // No text, rely on Info icon rendered by ApiPreviewDialog
+                          className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700" // Styling for the button
+                          disabled={isRemoving === transition.effective_date} 
+                          // No children needed here, ApiPreviewDialog renders its own trigger button with Info icon
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveTransition(transition.effective_date)}
+                          disabled={isRemoving === transition.effective_date}
+                          title="Remove this scheduled change"
+                        >
+                          {isRemoving === transition.effective_date ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                      onClick={() => handleRemoveTransition(transition.effective_date)}
-                      disabled={isRemoving === transition.effective_date}
-                      title="Remove this scheduled change"
-                    >
-                      {isRemoving === transition.effective_date ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
-             <DialogFooter className="mt-4">
+            <DialogFooter className="mt-4">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
             </DialogFooter>
           </TabsContent>
