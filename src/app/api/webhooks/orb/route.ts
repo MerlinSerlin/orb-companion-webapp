@@ -10,11 +10,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
   }
 
+  // Log all headers for debugging
+  console.log('Orb Webhook Handler at /api/webhooks/orb - Received headers:');
+  req.headers.forEach((value, key) => {
+    console.log(`${key}: ${value}`);
+  });
+
   const rawBody = await req.text();
   const signature = req.headers.get('X-Orb-Signature-V1');
   const timestamp = req.headers.get('X-Orb-Timestamp');
 
   if (!signature || !timestamp) {
+    console.log('Signature or timestamp missing. Signature:', signature, 'Timestamp:', timestamp);
     return NextResponse.json({ error: 'Missing Orb signature or timestamp' }, { status: 400 });
   }
 
