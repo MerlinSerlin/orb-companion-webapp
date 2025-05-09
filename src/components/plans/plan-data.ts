@@ -79,6 +79,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         popular: false,
       },
     ],
+    // Order of features to display in the UI
     entitlementDisplayOrder: [
       "Bandwidth GB",
       "Build Minutes",

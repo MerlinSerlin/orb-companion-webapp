@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// This should be securely stored in your environment variables
 const ORB_WEBHOOK_SECRET = process.env.ORB_WEBHOOK_SECRET;
 
 export async function POST(req: NextRequest) {
@@ -17,7 +16,6 @@ export async function POST(req: NextRequest) {
   });
 
   const rawBody = await req.text();
-  // Using X-Orb-Signature as per the Flask example
   const signatureFromHeader = req.headers.get('X-Orb-Signature'); 
   const timestamp = req.headers.get('X-Orb-Timestamp');
 
@@ -26,7 +24,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing Orb signature or timestamp' }, { status: 400 });
   }
 
-  // Construct the signed payload according to the Flask example
   const signedPayloadConstruction = `v1:${timestamp}:${rawBody}`;
   
   const hmac = crypto.createHmac('sha256', ORB_WEBHOOK_SECRET);
