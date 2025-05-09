@@ -4,19 +4,12 @@ import { PlanCard } from "./plan-card"
 import { PLAN_DETAILS } from "./plan-data"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 
-// Remove empty interface
-// interface PricingPlansProps {
-//   // No props needed anymore
-// }
-
 export function PricingPlans() {
   // Update hook and type usage
   const setPendingPlanId = useCustomerStore((state: CustomerState) => state.setPendingPlanId);
 
-  // SIMPLIFIED: Function only sets the pending plan ID
   const handlePlanSelection = (planId: string) => {
     if (!planId) return;
-    console.log('[PricingPlans] Setting pending plan ID:', planId);
     setPendingPlanId(planId); 
     // Logic to open dialogs is handled by parent (Home)
   }
