@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getCustomerSubscriptions, getCustomerDetails } from '@/app/actions';
+import { getCustomerSubscriptions, getCustomerDetails } from '@/app/actions/orb';
 import type { Subscription, CustomerDetails } from '@/lib/types';
 
 /**

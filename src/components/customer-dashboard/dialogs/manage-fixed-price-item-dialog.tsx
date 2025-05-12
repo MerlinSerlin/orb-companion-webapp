@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { editPriceIntervalQuantity, removeFixedFeeTransition } from "@/app/actions"; // Assuming removeFixedFeeTransition is here
+import { editPriceIntervalQuantity, removeFixedFeeTransition } from "@/app/actions/orb";
 import { toast } from "sonner";
 import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { ApiPreviewDialog } from "../../dialogs/api-preview-dialog";

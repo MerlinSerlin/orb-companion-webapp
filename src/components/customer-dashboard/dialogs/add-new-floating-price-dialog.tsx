@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { addPriceInterval, getPriceDetails } from "@/app/actions"; // Import actions
+import { addPriceInterval, getPriceDetails } from "@/app/actions/orb"; // Import actions
 import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"; // Reuse API preview
 import type { Price } from "@/lib/types"; // Import Price type
 // Import UI components needed for date input

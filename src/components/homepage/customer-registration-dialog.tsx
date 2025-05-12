@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
-import { createCustomer } from "@/app/actions"
+import { createCustomer } from "@/app/actions/orb"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import {
   Dialog,

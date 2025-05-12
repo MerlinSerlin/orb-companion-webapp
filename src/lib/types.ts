@@ -1,7 +1,3 @@
-// Remove unused Zustand imports
-// import { create } from 'zustand'
-// import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware'
-
 /**
  * Represents the structure of a subscription object
  * based on the expected response from the Orb API.
