@@ -6,8 +6,8 @@ import { PLAN_DETAILS } from '@/components/plans/plan-data';
 import { CustomerState } from '@/lib/store/customer-store';
 import { useCustomerStore } from '@/lib/store/customer-store';
 
-// Mock the action directly
-jest.mock('@/app/actions', () => ({
+// Mock the action directly - Update path to orb actions
+jest.mock('@/app/actions/orb', () => ({
   createSubscription: jest.fn(),
 }));
 
