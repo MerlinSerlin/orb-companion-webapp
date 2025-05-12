@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react"
 import { format, subDays } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
-import { createSubscription } from "@/app/actions"
+import { createSubscription } from "@/app/actions/orb"
 import {
   Dialog,
   DialogContent,
