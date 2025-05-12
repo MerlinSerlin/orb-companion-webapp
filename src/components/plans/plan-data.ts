@@ -49,7 +49,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         popular: false,
       },
       {
-        plan_id: "APtDhzaThwbpmZ8K",
+        plan_id: "egBAFXj9pykJhyeA",
         name: "Pro",
         description: "For growing businesses and high-traffic sites",
         price: "$99",
