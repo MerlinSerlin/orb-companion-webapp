@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { HydrationBoundary, QueryClient, dehydrate } from '@tanstack/react-query' 
 import { CustomerDashboardContent } from "@/components/customer-dashboard/dashboard-content"
 // Import both server actions
-import { getCustomerSubscriptions, getCustomerDetails } from "@/app/actions"
+import { getCustomerSubscriptions, getCustomerDetails } from "@/app/actions/orb"
 // Define a simple loading skeleton component
 
 function DashboardLoadingSkeleton() {

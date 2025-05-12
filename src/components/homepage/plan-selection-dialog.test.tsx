@@ -1,13 +1,13 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PlanSelectionDialog } from './plan-selection-dialog';
-import { createSubscription } from '@/app/actions';
+import { createSubscription } from '@/app/actions/orb';
 import { PLAN_DETAILS } from '@/components/plans/plan-data';
 import { CustomerState } from '@/lib/store/customer-store';
 import { useCustomerStore } from '@/lib/store/customer-store';
 
-// Mock the action directly
-jest.mock('@/app/actions', () => ({
+// Mock the action directly - Update path to orb actions
+jest.mock('@/app/actions/orb', () => ({
   createSubscription: jest.fn(),
 }));
 

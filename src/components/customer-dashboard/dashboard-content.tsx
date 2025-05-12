@@ -21,7 +21,7 @@ import { useCustomerSubscriptions, useCustomerDetails } from "@/hooks/useCustome
 import { SubscriptionDetailsCard } from "./cards/subscription-details-card";
 import { EntitlementsCard } from "./cards/entitlements-card";
 import { CustomerPortalCard } from "./cards/customer-portal-card";
-import { removeFixedFeeTransition } from "@/app/actions";
+import { removeFixedFeeTransition } from "@/app/actions/orb";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatters";
 

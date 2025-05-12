@@ -1,4 +1,4 @@
-"use server"
+'use server'
 
 import { orbClient } from "@/lib/orb"
 import type { 
@@ -127,135 +127,7 @@ export async function getCustomerSubscriptions(customerId: string): Promise<GetS
   }
 }
 
-// export async function getSubscriptionUsage(subscriptionId: string) {
-//   try {
-//     const usage = await orbClient.subscriptions.fetchUsage(subscriptionId)
 
-//     return {
-//       success: true,
-//       usage: usage.data,
-//     }
-//   } catch (error) {
-//     console.error('Error fetching usage:', error)
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : 'Failed to fetch usage',
-//     }
-//   }
-// }
-
-// export async function getAvailablePlans() {
-//   try {
-//     const plans = await orbClient.plans.list()
-    
-//     return {
-//       success: true,
-//       plans: plans.data.map(plan => ({
-//         id: plan.id,
-//         name: plan.name,
-//         description: plan.description || '',
-//         prices: plan.prices,
-//         minimum_amount: plan.minimum_amount,
-//         currency: plan.currency,
-//       })),
-//     }
-//   } catch (error) {
-//     console.error('Error fetching plans:', error)
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : 'Failed to fetch plans',
-//     }
-//   }
-// }
-
-// export async function getPlanDetails(planId: string) {
-//   try {
-//     const plan = await orbClient.plans.fetch(planId)
-    
-//     return {
-//       success: true,
-//       plan: {
-//         id: plan.id,
-//         name: plan.name,
-//         description: plan.description || '',
-//         prices: plan.prices,
-//         minimum_amount: plan.minimum_amount,
-//         currency: plan.currency,
-//       },
-//     }
-//   } catch (error) {
-//     console.error('Error fetching plan details:', error)
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : 'Failed to fetch plan details',
-//     }
-//   }
-// }
-
-// export async function cancelSubscription(subscriptionId: string) {
-//   try {
-//     const subscription = await orbClient.subscriptions.cancel(subscriptionId, {
-//       cancel_option: 'end_of_subscription_term'
-//     })
-    
-//     revalidatePath('/')
-
-//     return {
-//       success: true,
-//       subscription: {
-//         id: subscription.id,
-//         status: subscription.status,
-//       },
-//     }
-//   } catch (error) {
-//     console.error('Error canceling subscription:', error)
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : 'Failed to cancel subscription',
-//     }
-//   }
-// }
-
-// export async function getSubscriptionCosts(subscriptionId: string) {
-//   try {
-//     const costs = await orbClient.subscriptions.fetchCosts(subscriptionId)
-//     return {
-//       success: true,
-//       costs: costs.data,
-//     }
-//   } catch (error) {
-//     console.error('Error fetching subscription costs:', error)
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : 'Failed to fetch subscription costs',
-//     }
-//   }
-// }
-
-// export async function createPriceSimulation(customerId: string, planId: string) {
-//   try {
-//     const simulation = await orbClient.prices.evaluate(
-//       planId,
-//       {
-//         customer_id: customerId,
-//         timeframe_end: new Date().toISOString(),
-//         timeframe_start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Last 30 days
-//       }
-//     )
-//     return {
-//       success: true,
-//       simulation,
-//     }
-//   } catch (error) {
-//     console.error('Error creating price simulation:', error)
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : 'Failed to create price simulation',
-//     }
-//   }
-// }
-
-// --- NEW SERVER ACTION --- 
 export async function getCustomerDetails(customerId: string): Promise<GetCustomerDetailsResult> {
   try {
     console.log(`Fetching details for customer ${customerId}`);
@@ -279,23 +151,16 @@ export async function getCustomerDetails(customerId: string): Promise<GetCustome
   } catch (error) {
     console.error('Error fetching customer details:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch customer details';
-    // Distinguish between not found and other errors if possible
-    const isNotFoundError = errorMessage.toLowerCase().includes('not found'); // Basic check
+    const isNotFoundError = errorMessage.toLowerCase().includes('not found');
     
     return {
       success: false,
-      // Return null for customer on error
       customer: null, 
-      // Optionally provide more specific error, or just the message
       error: isNotFoundError ? 'Customer not found' : errorMessage, 
     };
   }
 }
 
-/**
- * Updates the quantity of a fixed-fee add-on (price interval) for a subscription.
- * Uses Orb's Add/Edit Price Intervals endpoint.
- */
 export async function editPriceIntervalQuantity(
   subscriptionId: string,
   priceIntervalId: string,
@@ -304,7 +169,6 @@ export async function editPriceIntervalQuantity(
   console.log(`[Action] Editing price interval quantity for sub: ${subscriptionId}, interval: ${priceIntervalId}`);
   console.log("[Action] Received Transitions:", transitions);
   
-  // Retrieve API Key from environment variables
   const apiKey = process.env.ORB_API_KEY;
   if (!apiKey) {
     console.error('[Action] Orb API key is not configured.');
@@ -314,7 +178,6 @@ export async function editPriceIntervalQuantity(
      return { success: false, error: 'Missing required parameters for editing price interval quantity.' };
   }
 
-  // Construct the API endpoint URL
   const orbApiUrl = `https://api.withorb.com/v1/subscriptions/${subscriptionId}/price_intervals`;
 
   const payload = {
@@ -330,7 +193,6 @@ export async function editPriceIntervalQuantity(
   console.log("[Action] Target URL:", orbApiUrl);
 
   try {
-    // Use fetch to call the Orb API endpoint directly
     const response = await fetch(orbApiUrl, {
       method: 'POST',
       headers: {
@@ -341,35 +203,27 @@ export async function editPriceIntervalQuantity(
     });
 
     if (!response.ok) {
-      // Attempt to parse the error body for more details
       let errorBody;
       try {
         errorBody = await response.json();
       } catch (parseError) {
-        // If parsing fails, use the status text
         console.error('[Action] Failed to parse error response body:', parseError);
         throw new Error(`API Error: ${response.status} ${response.statusText}`);
       }
       
       console.error('[Action] Failed to edit Orb price interval:', JSON.stringify(errorBody, null, 2));
       
-      // Extract a meaningful error message
       const errorMessage = errorBody?.validation_errors?.join('; ') 
                          || errorBody?.title 
                          || `API Error: ${response.status} ${response.statusText}`;
-      throw new Error(errorMessage); // Throw the error to be caught below
+      throw new Error(errorMessage);
     }
 
-    // If response is OK
     console.log(`[Action] Successfully edited price interval quantity for interval: ${priceIntervalId}`);
     
-    // Consider revalidation here if needed
-    // revalidatePath(`/customers/${customerId}`); 
-
     return { success: true };
 
   } catch (error) {
-    // Catch errors from fetch itself or errors thrown from !response.ok block
     console.error("[Action] Error during price interval edit process:", error);
     
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -381,7 +235,6 @@ export async function editPriceIntervalQuantity(
   }
 }
 
-// Action to add a new price interval (e.g., an add-on) to a subscription
 export async function addPriceInterval(
   subscriptionId: string,
   priceId: string,
@@ -455,9 +308,7 @@ export async function addPriceInterval(
     }
 
     console.log(`[Action] Successfully added price ${priceId} to subscription ${subscriptionId} starting ${effectiveStartDate}`);
-    // Consider revalidation here
-    // revalidatePath(`/customers/${customerId}`); 
-
+    
     return { success: true };
 
   } catch (error) {
@@ -467,7 +318,6 @@ export async function addPriceInterval(
   }
 }
 
-// Fetches details for a specific Price object from Orb
 export async function getPriceDetails(
   priceId: string
 ): Promise<{ success: boolean; price?: Price | null; error?: string }> {
@@ -483,9 +333,7 @@ export async function getPriceDetails(
   }
 
   try {
-    // Fetch the price - the SDK might return a specific type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fetchedPrice: any = await orbClient.prices.fetch(priceId);
+    const fetchedPrice = await orbClient.prices.fetch(priceId);
 
     if (!fetchedPrice) {
       throw new Error('Price not found');
@@ -493,23 +341,32 @@ export async function getPriceDetails(
 
     console.log(`[Action] Successfully fetched price details for ${priceId}`);
     
-    // Explicitly map the fetched fields to our comprehensive Price type
-    const mappedPrice: Price = {
+    // Map base fields first
+    const mappedPrice: Partial<Price> = {
       id: fetchedPrice.id,
       name: fetchedPrice.name,
       price_type: fetchedPrice.price_type,
       model_type: fetchedPrice.model_type,
       currency: fetchedPrice.currency,
-      item: fetchedPrice.item, // Assuming item structure is compatible
-      fixed_price_quantity: fetchedPrice.fixed_price_quantity,
-      // Include optional config fields, relying on optional chaining or checks
-      package_config: fetchedPrice.package_config as PackageConfig | null | undefined,
-      tiered_config: fetchedPrice.tiered_config as TieredConfig | null | undefined,
-      unit_config: fetchedPrice.unit_config as UnitConfig | null | undefined,
-      // Add other fields from fetchedPrice if they exist in our Price type
+      item: fetchedPrice.item, 
+      fixed_price_quantity: fetchedPrice.fixed_price_quantity, // May be null/undefined if not applicable
     };
 
-    return { success: true, price: mappedPrice };
+    // Conditionally add model-specific configs based on model_type
+    if ('package_config' in fetchedPrice) {
+        mappedPrice.package_config = fetchedPrice.package_config as PackageConfig | null | undefined;
+    }
+    if ('tiered_config' in fetchedPrice) {
+        mappedPrice.tiered_config = fetchedPrice.tiered_config as TieredConfig | null | undefined;
+    }
+    if ('unit_config' in fetchedPrice) {
+        mappedPrice.unit_config = fetchedPrice.unit_config as UnitConfig | null | undefined;
+    }
+    // Add checks for other potential model_type specific configs if needed
+
+    // Return the mapped price, asserting it matches the full Price type 
+    // (assuming base fields + potential configs cover the Price type definition)
+    return { success: true, price: mappedPrice as Price };
 
   } catch (error) {
     console.error("[Action] Error fetching price details:", error);
@@ -524,8 +381,6 @@ export async function getPriceDetails(
   }
 }
 
-// Helper function to fetch subscription details from Orb
-// This is a simplified version; you might have a more robust Orb client or service
 async function getOrbSubscription(subscriptionId: string, apiKey: string): Promise<Subscription | null> {
   const orbApiUrl = `https://api.withorb.com/v1/subscriptions/${subscriptionId}`;
   try {
@@ -538,7 +393,6 @@ async function getOrbSubscription(subscriptionId: string, apiKey: string): Promi
     });
     if (!response.ok) {
       console.error(`[Action] Failed to fetch Orb subscription ${subscriptionId}: ${response.status} ${response.statusText}`);
-      // Attempt to parse error for more detail
       try {
         const errorBody = await response.json();
         console.error("[Action] Orb fetch error body:", errorBody);
@@ -552,13 +406,10 @@ async function getOrbSubscription(subscriptionId: string, apiKey: string): Promi
   }
 }
 
-/**
- * Removes a specific fixed-fee quantity transition from a subscription's price interval.
- */
 export async function removeFixedFeeTransition(
   subscriptionId: string,
   priceIntervalId: string,
-  effectiveDateToRemove: string // Expected in YYYY-MM-DD format, or full ISO if Orb stores it that way consistently
+  effectiveDateToRemove: string 
 ): Promise<{ success: boolean; error?: string }> {
   console.log(`[Action] Removing fixed-fee transition for sub: ${subscriptionId}, interval: ${priceIntervalId}, date: ${effectiveDateToRemove}`);
 
@@ -571,13 +422,11 @@ export async function removeFixedFeeTransition(
     return { success: false, error: 'Missing required parameters for removing transition.' };
   }
 
-  // 1. Fetch current subscription details from Orb
   const currentSubscription = await getOrbSubscription(subscriptionId, apiKey);
   if (!currentSubscription) {
     return { success: false, error: 'Failed to fetch current subscription details from Orb.' };
   }
 
-  // 2. Find the relevant price interval and its transitions
   const targetInterval = currentSubscription.price_intervals?.find(pi => pi.id === priceIntervalId);
   if (!targetInterval) {
     return { success: false, error: `Price interval ${priceIntervalId} not found on subscription.` };
@@ -585,24 +434,14 @@ export async function removeFixedFeeTransition(
 
   const existingTransitions = targetInterval.fixed_fee_quantity_transitions || [];
   
-  // 3. Filter out the transition to be removed
-  // Orb stores dates as YYYY-MM-DDTHH:mm:ss+00:00. 
-  // The effectiveDateToRemove from the client might be YYYY-MM-DD.
-  // We should compare only the date part for robustness or ensure client sends full ISO string.
-  // Using startsWith is a pragmatic approach if effectiveDateToRemove is YYYY-MM-DD.
   const updatedTransitions = existingTransitions.filter(
     t => !t.effective_date.startsWith(effectiveDateToRemove) 
   );
 
   if (updatedTransitions.length === existingTransitions.length && existingTransitions.length > 0) {
-    // Only warn if there were transitions to begin with and none were removed.
     console.warn(`[Action] Transition with effective date starting with ${effectiveDateToRemove} not found for removal.`);
-    // Depending on desired behavior, you might return an error or success.
-    // For now, if not found, we proceed to send the (potentially unchanged) list to Orb.
-    // If the intent is that it *must* be found, return { success: false, error: 'Transition not found.' };
   }
 
-  // 4. Construct the payload for Orb
   const orbApiUrl = `https://api.withorb.com/v1/subscriptions/${subscriptionId}/price_intervals`;
   const payload = {
     edit: [
@@ -648,8 +487,4 @@ export async function removeFixedFeeTransition(
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     return { success: false, error: errorMessage };
   }
-}
-
-// Make sure to export FixedFeeQuantityTransition if it's used here and defined in types.ts
-// For this example, it's assumed to be available via an import from types.ts if not defined locally.
-// Ensure Subscription and PriceInterval types are correctly imported and cover fixed_fee_quantity_transitions.
+} 
