@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
+import { format, subDays } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import { createSubscription } from "@/app/actions"
@@ -15,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
 import { PLAN_DETAILS } from "../plans/plan-data"
 
@@ -37,6 +39,9 @@ export function PlanSelectionDialog({
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<typeof PLAN_DETAILS[0] | null>(null)
+  const [startDateString, setStartDateString] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
+
+  const minDateString = format(subDays(new Date(), 90), 'yyyy-MM-dd');
 
   useEffect(() => {
     setSelectedPlan(pendingPlanId ? PLAN_DETAILS.find(plan => plan.plan_id === pendingPlanId) || null : null)
@@ -45,12 +50,12 @@ export function PlanSelectionDialog({
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!pendingPlanId || !storeCustomerId || !selectedPlan) return
+    if (!pendingPlanId || !storeCustomerId || !selectedPlan || !startDateString) return
 
     setIsSubmitting(true)
 
     try {
-      const result = await createSubscription(storeCustomerId, pendingPlanId)
+      const result = await createSubscription(storeCustomerId, pendingPlanId, startDateString)
       
       if (!result.success || !result.subscription) {
         throw new Error(result.error || "Failed to create subscription")
@@ -92,6 +97,7 @@ export function PlanSelectionDialog({
   const apiRequestBody = {
     customer_id: storeCustomerId || "cust_12345abcdef",
     plan_id: pendingPlanId || "plan_basic",
+    start_date: startDateString || null,
   }
 
   const sampleResponse = {
@@ -100,7 +106,7 @@ export function PlanSelectionDialog({
     plan_id: pendingPlanId || "plan_basic",
     status: "active",
     created_at: new Date().toISOString(),
-    start_date: new Date().toISOString(),
+    start_date: startDateString || new Date().toISOString().split('T')[0],
     auto_collection: true,
     net_terms: 0
   }
@@ -131,6 +137,18 @@ export function PlanSelectionDialog({
                 </div>
                 
                 <p className="text-muted-foreground">{selectedPlan.description}</p>
+                
+                <div className="grid gap-2 pt-4">
+                  <Label htmlFor="start-date">Subscription Start Date</Label>
+                  <input
+                    id="start-date"
+                    type="date"
+                    value={startDateString}
+                    onChange={(e) => setStartDateString(e.target.value)}
+                    min={minDateString}
+                    className="w-full"
+                  />
+                </div>
                 
                 <div className="pt-2">
                   <h4 className="text-sm font-medium mb-2">Plan Features:</h4>
@@ -163,7 +181,7 @@ export function PlanSelectionDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !storeCustomerId || !selectedPlan}>
+            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !storeCustomerId || !selectedPlan || !startDateString}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

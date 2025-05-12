@@ -40,13 +40,22 @@ export async function createCustomer(name: string, email: string) {
   }
 }
 
-export async function createSubscription(customerId: string, planId: string) {
+/**
+ * Creates a new subscription for a customer with an optional start date.
+ * 
+ * @param {string} customerId - The Orb ID of the customer.
+ * @param {string} planId - The ID of the plan to subscribe to.
+ * @param {string} [startDate] - Optional start date for the subscription in YYYY-MM-DD format.
+ * @returns {Promise<object>} - An object indicating success or failure, including the subscription details or an error message.
+ */
+export async function createSubscription(customerId: string, planId: string, startDate?: string) {
   try {
-    console.log(`Subscribing customer ${customerId} to plan ${planId}`)
+    console.log(`Subscribing customer ${customerId} to plan ${planId}` + (startDate ? ` starting on ${startDate}` : ''));
 
     const subscription = await orbClient.subscriptions.create({
       customer_id: customerId,
       plan_id: planId,
+      ...(startDate && { start_date: startDate }), // Conditionally add start_date if provided
     })
     
     console.log(`Subscription created successfully with ID: ${subscription.id}`)
@@ -57,6 +66,7 @@ export async function createSubscription(customerId: string, planId: string) {
         id: subscription.id,
         plan_id: planId,
         status: subscription.status,
+        start_date: subscription.start_date // Include start_date in the response
       },
     }
   } catch (error) {
