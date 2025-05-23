@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 
 // Initialize Stripe with your secret key
 // Ensure this is configured with process.env.STRIPE_SECRET_KEY
-const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY_TEST!, {
   // apiVersion: '2024-06-20', // Temporarily remove to resolve type issue
   typescript: true, // Enables better type checking with the Stripe SDK
 });

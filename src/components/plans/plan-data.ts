@@ -1,5 +1,8 @@
 // src/components/plans/plan-data.ts
 
+// --- Imports ---
+import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
+
 // --- Interfaces ---
 export interface EntitlementFeatureDisplay {
   name: string;
@@ -12,6 +15,7 @@ export interface PlanUIDetail {
   description: string;
   price: string;
   features: EntitlementFeatureDisplay[];
+  allowedAddOnPriceIds?: string[];
   cta: string;
   popular: boolean;
 }
@@ -34,10 +38,10 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
     companyName: "NimbusScale",
     uiPlans: [
       {
-        plan_id: "C5xgi5R8yRZcSr6i",
+        plan_id: "kRDwGmuatwQJdNLY",
         name: "Starter",
         description: "For small projects and personal websites",
-        price: "$29",
+        price: "$0",
         features: [
           { name: "Bandwidth", value: "100 GB" },
           { name: "Edge Requests", value: "1M requests" },
@@ -45,6 +49,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Builds", value: "100 per month" },
           { name: "Build Minutes", value: "300 minutes" },
         ],
+        allowedAddOnPriceIds: [],
         cta: "Select Starter",
         popular: false,
       },
@@ -60,6 +65,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Builds", value: "Unlimited" },
           { name: "Build Minutes", value: "1,000 minutes" },
         ],
+        allowedAddOnPriceIds: [OBSERVABILITY_EVENTS_PRICE_ID],
         cta: "Select Pro",
         popular: true,
       },
@@ -75,6 +81,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Faster Builds", value: "Enabled" },
           { name: "RBAC and SSO", value: "Available" },
         ],
+        allowedAddOnPriceIds: [OBSERVABILITY_EVENTS_PRICE_ID],
         cta: "Contact Sales",
         popular: false,
       },
