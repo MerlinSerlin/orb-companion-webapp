@@ -11,7 +11,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types";
-// import { EditFixedFeePriceDialog } from "./dialogs/edit-fixed-fee-price-dialog"; // Comment out or remove old
 import { ManageFixedPriceItemDialog } from "./dialogs/manage-fixed-price-item-dialog"; // Add new dialog import
 import { AddNewFloatingPriceDialog } from "./dialogs/add-new-floating-price-dialog";
 import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
@@ -249,7 +248,8 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
                 />
                 
                 <EntitlementsCard 
-                  features={features} 
+                  features={features}
+                  activeSubscription={activeSubscription}
                   onOpenAddOnDialog={() => setIsAdjustAddOnDialogOpen(true)}
                   onOpenAddObservabilityDialog={handleOpenAddObservability}
                   onRemoveScheduledTransition={handleRemoveScheduledTransition}

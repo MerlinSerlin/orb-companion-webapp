@@ -4,19 +4,40 @@ import { Button } from "@/components/ui/button";
 import { Info, CheckCircle2, PlusCircle, Trash2 } from 'lucide-react';
 import type { EntitlementFeature } from '@/lib/utils/subscriptionUtils';
 import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
+import type { Subscription } from "@/lib/types"; // Import Subscription type
+import { getCurrentCompanyConfig } from "@/components/plans/plan-data"; // Import plan data helper
 
 interface EntitlementsCardProps {
   features: EntitlementFeature[];
+  activeSubscription: Subscription | null; // Add activeSubscription prop
   onOpenAddOnDialog: () => void; // Callback to open the dialog
   onOpenAddObservabilityDialog: () => void; // Callback to open the dialog for adding Observability
   onRemoveScheduledTransition?: (priceIntervalId: string, effectiveDate: string) => void; // New prop
 }
 
-export function EntitlementsCard({ features, onOpenAddOnDialog, onOpenAddObservabilityDialog, onRemoveScheduledTransition }: EntitlementsCardProps) {
-  // Check if the observability feature is already included
-  const hasObservability = features.some(
+export function EntitlementsCard({ 
+  features, 
+  activeSubscription, // Destructure new prop
+  onOpenAddOnDialog, 
+  onOpenAddObservabilityDialog, 
+  onRemoveScheduledTransition 
+}: EntitlementsCardProps) {
+  
+  // Check if the observability feature is already included in the current entitlements
+  const hasObservabilityFeature = features.some(
     (feature) => feature.priceId === OBSERVABILITY_EVENTS_PRICE_ID
   );
+
+  // Determine if the current plan allows adding observability events
+  let canAddObservability = false;
+  if (activeSubscription && activeSubscription.plan && activeSubscription.plan.id) {
+    const currentPlanId = activeSubscription.plan.id;
+    const companyConfig = getCurrentCompanyConfig(); 
+    const currentPlanDetails = companyConfig.uiPlans.find(p => p.plan_id === currentPlanId);
+    if (currentPlanDetails && currentPlanDetails.allowedAddOnPriceIds) {
+      canAddObservability = currentPlanDetails.allowedAddOnPriceIds.includes(OBSERVABILITY_EVENTS_PRICE_ID);
+    }
+  }
 
   return (
     <Card>
@@ -97,7 +118,7 @@ export function EntitlementsCard({ features, onOpenAddOnDialog, onOpenAddObserva
           })}
 
           {/* Conditionally render Add Observability option */}
-          {!hasObservability && (
+          {canAddObservability && !hasObservabilityFeature && (
             <li className="flex items-start justify-between border-b pb-3 pt-1 last:border-b-0 text-sm">
               {/* Left side: Icon, Name */}
               <div className="flex items-center pt-0.5">
@@ -119,7 +140,7 @@ export function EntitlementsCard({ features, onOpenAddOnDialog, onOpenAddObserva
           )}
           
           {/* Message if no features at all */}
-          {features.length === 0 && !hasObservability && (
+          {features.length === 0 && !(canAddObservability && !hasObservabilityFeature) && (
              <p className="text-sm text-muted-foreground">No feature details available for this plan.</p>
           )}
         </ul>
