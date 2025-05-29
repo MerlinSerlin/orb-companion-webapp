@@ -156,7 +156,7 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
               rate = `${unitAmount.toFixed(2)} per${unit}`;
             }
             
-            tierDetails.push({
+            tierDetails!.push({
               range,
               rate,
               unitAmount
