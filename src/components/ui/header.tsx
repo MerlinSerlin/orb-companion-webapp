@@ -8,6 +8,25 @@ import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store
 import { SignUpButton } from "./sign-up-button"
 import { CustomerRegistrationDialog } from "@/components/homepage/customer-registration-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Cloud, Brain } from "lucide-react"
+import { type OrbInstance } from "@/lib/orb-config"
+
+// Instance configuration matching homepage
+const getInstanceConfig = (instance: OrbInstance) => {
+  const configs = {
+    'cloud-infra': {
+      title: 'Cloud Infrastructure',
+      icon: Cloud,
+      color: 'bg-blue-500'
+    },
+    'ai-agents': {
+      title: 'AI Agents', 
+      icon: Brain,
+      color: 'bg-purple-500'
+    }
+  }
+  return configs[instance]
+}
 
 export function Header() {
   const router = useRouter()
@@ -29,11 +48,23 @@ export function Header() {
 
   const hasActiveContext = !!customerId;
   const showSignUpButton = !hasActiveContext && selectedInstance && pathname !== '/';
+  const instanceConfig = selectedInstance ? getInstanceConfig(selectedInstance) : null;
 
   return (
     <header className="border-b">
-      <div className="container mx-auto flex h-16 items-center justify-between">
-        <Logo />
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="flex items-center gap-4">
+          <Logo />
+          {/* Instance indicator - only show when not on homepage */}
+          {instanceConfig && pathname !== '/' && (
+            <div className="flex items-center gap-2 pl-4 border-l border-gray-200">
+              <div className={`w-8 h-8 ${instanceConfig.color} rounded-full flex items-center justify-center`}>
+                <instanceConfig.icon className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">{instanceConfig.title}</span>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-4">
           {hasActiveContext ? (
             <>
@@ -47,11 +78,6 @@ export function Header() {
               <span className="text-sm text-muted-foreground" title={customerId || 'No Internal ID'}>
                  {externalCustomerId || (customerId ? `ID: ${customerId.substring(0, 6)}...` : 'Context Active')}
               </span>
-              {selectedInstance && (
-                <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                  {selectedInstance === 'cloud-infra' ? 'Cloud Infra' : 'AI Agents'}
-                </span>
-              )}
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign Out
               </Button>

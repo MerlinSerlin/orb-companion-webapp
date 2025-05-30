@@ -13,6 +13,7 @@ export default function HomePage() {
   const router = useRouter()
   const setSelectedInstance = useCustomerStore((state) => state.setSelectedInstance)
   const logout = useCustomerStore((state) => state.logout)
+  const selectedInstance = useCustomerStore((state) => state.selectedInstance)
 
   // Auto-logout when visiting homepage
   useEffect(() => {
@@ -23,7 +24,13 @@ export default function HomePage() {
   const handleInstanceSelect = (instance: OrbInstance) => {
     console.log(`[Homepage] Instance selected: ${instance}`)
     setSelectedInstance(instance)
-    router.push('/plan-select')
+    // Don't redirect immediately - let user choose when to proceed
+  }
+
+  const handleGoToPlanSelect = () => {
+    if (selectedInstance) {
+      router.push('/plan-select')
+    }
   }
 
   const instances = [
@@ -46,7 +53,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="container mx-auto flex h-16 items-center justify-center">
+        <div className="container mx-auto flex h-16 items-center justify-start px-4">
           <Logo />
         </div>
       </header>
@@ -64,8 +71,9 @@ export default function HomePage() {
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {instances.map((instance) => {
             const IconComponent = instance.icon
+            const isSelected = selectedInstance === instance.key
             return (
-              <Card key={instance.key} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Card key={instance.key} className={`hover:shadow-lg transition-all cursor-pointer ${isSelected ? 'ring-2 ring-primary shadow-lg' : ''}`}>
                 <CardHeader className="text-center">
                   <div className={`w-16 h-16 ${instance.color} rounded-full flex items-center justify-center mx-auto mb-4`}>
                     <IconComponent className="w-8 h-8 text-white" />
@@ -78,14 +86,32 @@ export default function HomePage() {
                     onClick={() => handleInstanceSelect(instance.key)}
                     className="w-full"
                     size="lg"
+                    variant={isSelected ? "default" : "outline"}
                   >
-                    Select {instance.title}
+                    {isSelected ? "Selected" : `Select ${instance.title}`}
                   </Button>
                 </CardContent>
               </Card>
             )
           })}
         </div>
+
+        {selectedInstance && (
+          <div className="text-center mt-8">
+            <div className="bg-muted/50 rounded-lg p-6 max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground mb-4">
+                Instance selected: <span className="font-medium">{instances.find(i => i.key === selectedInstance)?.title}</span>
+              </p>
+              <Button 
+                onClick={handleGoToPlanSelect}
+                size="lg"
+                className="w-full"
+              >
+                Go to Plan Selection →
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="text-center mt-12">
           <p className="text-sm text-gray-500">
