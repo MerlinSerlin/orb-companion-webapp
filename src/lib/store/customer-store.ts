@@ -40,11 +40,14 @@ export const useCustomerStore = create<CustomerState>()(
       setExternalCustomerId: (id: string | null) => set({ externalCustomerId: id }),
       setSelectedInstance: (instance: OrbInstance | null) => set({ selectedInstance: instance }),
       logout: () => {
-        console.log('[Store Reset] Setting state to initial and clearing storage...');
-        set(initialState);
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('customer-storage');
-        }
+        console.log('[Store Reset] Clearing customer session but preserving instance selection...');
+        set((state) => ({
+          ...state,
+          customerId: null,
+          externalCustomerId: null,
+          pendingPlanId: null,
+          // Keep selectedInstance so users can navigate directly to customer dashboards
+        }));
       },
       reset: () => {
         console.log('[Store Reset] Setting state to initial and clearing storage...');
