@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { createCustomer } from "@/app/actions/orb"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
+import { type OrbInstance } from "@/lib/orb-config"
 import {
   Dialog,
   DialogContent,
@@ -22,12 +23,14 @@ interface CustomerRegistrationDialogProps {
   onRegistrationSuccess: (customerId: string) => void
   isOpen: boolean
   onClose: () => void
+  instance?: OrbInstance
 }
 
 export function CustomerRegistrationDialog({ 
   onRegistrationSuccess,
   isOpen,
   onClose,
+  instance,
 }: CustomerRegistrationDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
@@ -37,6 +40,7 @@ export function CustomerRegistrationDialog({
 
   const setCustomerId = useCustomerStore((state: CustomerState) => state.setCustomerId);
   const setExternalCustomerId = useCustomerStore((state: CustomerState) => state.setExternalCustomerId);
+  const setSelectedInstance = useCustomerStore((state: CustomerState) => state.setSelectedInstance);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -58,7 +62,7 @@ export function CustomerRegistrationDialog({
     setIsSubmitting(true)
 
     try {
-      const result = await createCustomer(formData.name, formData.email)
+      const result = await createCustomer(formData.name, formData.email, instance)
       console.log("createCustomer result:", result);
 
       if (!result.success || !result.customerId || !result.externalCustomerId) {
@@ -72,6 +76,7 @@ export function CustomerRegistrationDialog({
 
       setCustomerId(result.customerId);
       setExternalCustomerId(result.externalCustomerId);
+      setSelectedInstance(instance || 'cloud-infra');
 
       if (onRegistrationSuccess) {
         onRegistrationSuccess(result.customerId);

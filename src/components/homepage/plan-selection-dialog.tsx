@@ -8,6 +8,8 @@ import { format, subDays } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import { createSubscription } from "@/app/actions/orb"
+import { type OrbInstance, ORB_INSTANCES } from "@/lib/orb-config"
+import { getCurrentCompanyConfig, type PlanUIDetail } from "../plans/plan-data"
 import {
   Dialog,
   DialogContent,
@@ -18,44 +20,52 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { ApiPreviewDialog } from "@/components/dialogs/api-preview-dialog"
-import { PLAN_DETAILS } from "../plans/plan-data"
 
 interface PlanSelectionDialogProps {
   onPlanSelected?: () => void
   isOpen: boolean
   onClose: () => void
   onSubscriptionSuccess?: () => void
+  instance?: OrbInstance
 }
 
 export function PlanSelectionDialog({ 
   onPlanSelected,
   isOpen,
   onClose,
-  onSubscriptionSuccess
+  onSubscriptionSuccess,
+  instance = 'cloud-infra'
 }: PlanSelectionDialogProps) {
   const router = useRouter()
-  const storeCustomerId = useCustomerStore((state: CustomerState) => state.customerId)
+  
+  // Get customer data directly from store (no validation needed)
+  const customerId = useCustomerStore((state: CustomerState) => state.customerId)
   const pendingPlanId = useCustomerStore((state: CustomerState) => state.pendingPlanId)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<typeof PLAN_DETAILS[0] | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<PlanUIDetail | null>(null)
   const [startDateString, setStartDateString] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
 
   const minDateString = format(subDays(new Date(), 90), 'yyyy-MM-dd');
 
+  // Get the appropriate plan data based on instance
+  const instanceConfig = ORB_INSTANCES[instance];
+  const companyConfig = getCurrentCompanyConfig(instanceConfig.companyKey);
+  const planDetails = companyConfig.uiPlans;
+
   useEffect(() => {
-    setSelectedPlan(pendingPlanId ? PLAN_DETAILS.find(plan => plan.plan_id === pendingPlanId) || null : null)
-  }, [pendingPlanId])
+    setSelectedPlan(pendingPlanId ? planDetails.find(plan => plan.plan_id === pendingPlanId) || null : null)
+  }, [pendingPlanId, planDetails])
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!pendingPlanId || !storeCustomerId || !selectedPlan || !startDateString) return
+    if (!pendingPlanId || !customerId || !selectedPlan || !startDateString) return
 
     setIsSubmitting(true)
 
     try {
-      const result = await createSubscription(storeCustomerId, pendingPlanId, startDateString)
+      const result = await createSubscription(customerId, pendingPlanId, startDateString, instance)
       
       if (!result.success || !result.subscription) {
         throw new Error(result.error || "Failed to create subscription")
@@ -77,8 +87,8 @@ export function PlanSelectionDialog({
       onClose()
       
       setTimeout(() => {
-        if (storeCustomerId) {
-          router.push(`/customers/${storeCustomerId}`)
+        if (customerId) {
+          router.push(`/customers/${customerId}`)
         } else {
           console.warn("Customer ID not found in store after subscription, redirecting to homepage.")
           router.push("/")
@@ -95,14 +105,14 @@ export function PlanSelectionDialog({
   }
 
   const apiRequestBody = {
-    customer_id: storeCustomerId || "cust_12345abcdef",
+    customer_id: customerId || "cust_12345abcdef",
     plan_id: pendingPlanId || "plan_basic",
     start_date: startDateString || null,
   }
 
   const sampleResponse = {
     id: "sub_12345abcdef",
-    customer_id: storeCustomerId || "cust_12345abcdef",
+    customer_id: customerId || "cust_12345abcdef",
     plan_id: pendingPlanId || "plan_basic",
     status: "active",
     created_at: new Date().toISOString(),
@@ -153,7 +163,7 @@ export function PlanSelectionDialog({
                 <div className="pt-2">
                   <h4 className="text-sm font-medium mb-2">Plan Features:</h4>
                   <ul className="space-y-1 text-sm">
-                    {selectedPlan.features.map((feature, index) => (
+                    {selectedPlan.features.map((feature: { name: string; value: string }, index: number) => (
                       <li key={index} className="flex items-center justify-between">
                         <span>{feature.name}:</span>
                         <span className="font-medium">{feature.value}</span>
@@ -181,7 +191,7 @@ export function PlanSelectionDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !storeCustomerId || !selectedPlan || !startDateString}>
+            <Button type="submit" disabled={isSubmitting || !pendingPlanId || !customerId || !selectedPlan || !startDateString}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

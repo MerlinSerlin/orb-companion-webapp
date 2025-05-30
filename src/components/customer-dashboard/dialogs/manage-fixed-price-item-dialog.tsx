@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { ApiPreviewDialog } from "../../dialogs/api-preview-dialog";
 import type { Subscription, FixedFeeQuantityTransition } from "@/lib/types";
+import type { OrbInstance } from "@/lib/orb-config";
 import { formatNumber, formatDate } from "@/lib/utils/formatters";
 
 // Uncommented JsonValue type
@@ -39,6 +40,7 @@ interface ManageFixedPriceItemDialogProps {
   onRemoveSuccess?: () => void; 
   dialogTitle?: string;
   dialogDescription?: string;
+  instance: OrbInstance;
 }
 
 export function ManageFixedPriceItemDialog({
@@ -54,7 +56,8 @@ export function ManageFixedPriceItemDialog({
   onScheduleSuccess,
   onRemoveSuccess,
   dialogTitle,
-  dialogDescription
+  dialogDescription,
+  instance
 }: ManageFixedPriceItemDialogProps) {
 
   const [newQuantityState, setNewQuantityState] = React.useState<number>(currentQuantity);
@@ -143,7 +146,7 @@ export function ManageFixedPriceItemDialog({
     ].sort((a, b) => new Date(a.effective_date).getTime() - new Date(b.effective_date).getTime());
 
     try {
-      const result = await editPriceIntervalQuantity(subscriptionId, priceIntervalId, updatedSchedule);
+      const result = await editPriceIntervalQuantity(subscriptionId, priceIntervalId, updatedSchedule, instance);
       if (result.success) {
         toast.success(`${itemName} Change Scheduled`, {
           description: `Set to ${newQuantityState} effective ${effectiveDateStr}.`,
@@ -195,7 +198,7 @@ export function ManageFixedPriceItemDialog({
   const handleRemoveTransition = async (effectiveDateToRemove: string) => {
     setIsRemoving(effectiveDateToRemove);
     try {
-      const result = await removeFixedFeeTransition(subscriptionId, priceIntervalId, effectiveDateToRemove);
+      const result = await removeFixedFeeTransition(subscriptionId, priceIntervalId, effectiveDateToRemove, instance);
       if (result.success) {
         toast.success("Scheduled Change Removed", {
           description: `The change scheduled for ${formatDate(effectiveDateToRemove)} has been removed.`,

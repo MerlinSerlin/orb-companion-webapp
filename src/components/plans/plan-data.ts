@@ -22,6 +22,7 @@ export interface PlanUIDetail {
 
 export interface CompanyPlanData {
   companyName: string; // Remains useful for internal consistency if iterating over values
+  logo: string; // Path to the company logo
   uiPlans: PlanUIDetail[];
   entitlementDisplayOrder: string[];
   // TODO: Consider adding company-specific add-on price IDs here later
@@ -34,8 +35,9 @@ export interface CompanyConfigsMap {
 
 // --- Main Configuration Object/Map ---
 export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
-  "NimbusScale": {
+  "Cloud_Infra": {
     companyName: "NimbusScale",
+    logo: "/cloud.svg",
     uiPlans: [
       {
         plan_id: "kRDwGmuatwQJdNLY",
@@ -97,21 +99,34 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
       "Concurrent Builds"
     ],
   },
-  // Example for another company:
-  // "AnotherCompany": {
-  //   companyName: "AnotherCompany",
-  //   uiPlans: [ /* ... */ ],
-  //   entitlementDisplayOrder: [ /* ... */ ],
-  // }
+  "AI_Agents": {
+    companyName: "Neural Prime",
+    logo: "/brain.svg",
+    uiPlans: [
+      {
+        plan_id: "oQa7qs95URdTSoqG",
+        name: "Enterprise",
+        description: "For large-scale applications with high demands",
+        price: "",
+        features: [
+          { name: "Access to All Models", value: "24/7" },
+        ],
+        // allowedAddOnPriceIds: [OBSERVABILITY_EVENTS_PRICE_ID],
+        cta: "Subscribe",
+        popular: false,
+      },
+    ],
+    entitlementDisplayOrder: [ /* ... */ ],
+  }
 };
 
 // --- Helper Function to Get Current Config (updated) ---
-export const getCurrentCompanyConfig = (companyKey: string = "NimbusScale"): CompanyPlanData => {
+export const getCurrentCompanyConfig = (companyKey: string = "Cloud_Infra"): CompanyPlanData => {
   const config = COMPANY_PLAN_CONFIGS_MAP[companyKey];
   if (!config) {
-    console.error(`Configuration for company "${companyKey}" not found! Defaulting to NimbusScale or first available.`);
-    // Fallback to NimbusScale if specific key not found, or the first config if NimbusScale itself is missing.
-    return COMPANY_PLAN_CONFIGS_MAP["NimbusScale"] || Object.values(COMPANY_PLAN_CONFIGS_MAP)[0] || {
+    console.error(`Configuration for company "${companyKey}" not found! Defaulting to Cloud_Infra or first available.`);
+    // Fallback to Cloud_Infra if specific key not found, or the first config if Cloud_Infra itself is missing.
+    return COMPANY_PLAN_CONFIGS_MAP["Cloud_Infra"] || Object.values(COMPANY_PLAN_CONFIGS_MAP)[0] || {
       companyName: "DefaultFallback",
       uiPlans: [],
       entitlementDisplayOrder: []
@@ -121,10 +136,10 @@ export const getCurrentCompanyConfig = (companyKey: string = "NimbusScale"): Com
 };
 
 // --- Exports for Backwards Compatibility / Current Usage ---
-// Defaulting to "NimbusScale" for current direct exports.
+// Defaulting to "Cloud_Infra" for current direct exports.
 // If you introduce a dynamic way to set the current company context, this could use that.
-export const PLAN_DETAILS: PlanUIDetail[] = getCurrentCompanyConfig("NimbusScale").uiPlans;
-export const DESIRED_ENTITLEMENT_ORDER: string[] = getCurrentCompanyConfig("NimbusScale").entitlementDisplayOrder;
+export const PLAN_DETAILS: PlanUIDetail[] = getCurrentCompanyConfig("Cloud_Infra").uiPlans;
+export const DESIRED_ENTITLEMENT_ORDER: string[] = getCurrentCompanyConfig("Cloud_Infra").entitlementDisplayOrder;
 
 
 // --- Add-On Price IDs --- 

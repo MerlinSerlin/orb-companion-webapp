@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types";
+import type { OrbInstance } from "@/lib/orb-config";
 import { ManageFixedPriceItemDialog } from "./dialogs/manage-fixed-price-item-dialog"; // Add new dialog import
 import { AddNewFloatingPriceDialog } from "./dialogs/add-new-floating-price-dialog";
 import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
@@ -29,9 +30,10 @@ export type { Subscription };
 
 interface CustomerDashboardContentProps {
   customerId: string; // ID from URL Prop
+  instance?: OrbInstance; // Optional instance for multi-instance support
 }
 
-export function CustomerDashboardContent({ customerId: customerIdProp }: CustomerDashboardContentProps) {
+export function CustomerDashboardContent({ customerId: customerIdProp, instance = 'cloud-infra' }: CustomerDashboardContentProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   
@@ -39,19 +41,19 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
   const [isAdjustAddOnDialogOpen, setIsAdjustAddOnDialogOpen] = useState(false);
   const [isAddFeatureDialogOpen, setIsAddFeatureDialogOpen] = useState(false);
 
-  // Use the custom hook for customer details
+  // Use the custom hook for customer details with instance parameter
   const { 
     data: customerDetails, 
     error: customerDetailsError 
-  } = useCustomerDetails(customerIdProp);
+  } = useCustomerDetails(customerIdProp, instance);
 
-  // Use the custom hook for subscriptions
+  // Use the custom hook for subscriptions with instance parameter
   const {
     data: subscriptions,
     error: subscriptionsError,
     isLoading: subscriptionsLoading,
     isError: subscriptionsIsError,
-  } = useCustomerSubscriptions(customerIdProp);
+  } = useCustomerSubscriptions(customerIdProp, instance);
 
   // Effect to sync Zustand store context using the result of the customer details query
   useEffect(() => {
@@ -70,7 +72,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
     // No cleanup needed for fetch, but effect still runs on dependency change.
 
   // Depend on the fetched customerDetails object
-  }, [customerDetails]); 
+  }, [customerDetails]);
 
   // --- Calculate derived state directly during render ---
   const activeSubscription = useMemo(() => {
@@ -314,6 +316,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp }: Custome
           activeSubscription={activeSubscription}
           onScheduleSuccess={refreshSubscriptionData}
           onRemoveSuccess={refreshSubscriptionData}
+          instance={instance}
         />
       )}
       
