@@ -2,6 +2,13 @@ import type { Subscription, PriceInterval, FixedFeeQuantityTransition } from "@/
 import { formatNumber, formatDate } from "./formatters";
 import { DESIRED_ENTITLEMENT_ORDER } from "../../components/plans/plan-data";
 
+// Define the structure for individual tier details
+export interface TierDetail {
+  range: string; // e.g., "0 - 100,000", "100,000 - 250,000", "250,000+"
+  rate: string;  // e.g., "1 Tok-CR", "0.97 Tok-CR"
+  unitAmount: number; // Raw numeric value for calculations
+}
+
 // Define the structure for the derived entitlement feature
 export interface EntitlementFeature {
   priceId?: string;
@@ -13,6 +20,8 @@ export interface EntitlementFeature {
   rawOveragePrice?: number;
   statusText?: string | null;
   allFutureTransitions?: FixedFeeQuantityTransition[] | undefined;
+  tierDetails?: TierDetail[]; // New field for detailed tier information
+  showDetailed?: boolean;     // Flag to control whether to show detailed or simple view
 }
 
 // The ExtendedPriceInterval might be redundant if PriceInterval from types.ts already has fixed_fee_quantity_transitions
@@ -50,6 +59,8 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
     const currencySymbol = price.currency === 'USD' ? '$' : '';
     let statusText: string | null = null; // Initialize statusText
     let allFutureTransitions: FixedFeeQuantityTransition[] | undefined = undefined; // Initialize new field
+    let tierDetails: TierDetail[] | undefined = undefined; // Store tier details
+    let showDetailed: boolean = false; // Flag for detailed view
 
     // --- Determine CURRENT quantity and base value --- 
     if (price.price_type === 'fixed_price' && typeof price.fixed_price_quantity === 'number') {
@@ -110,34 +121,52 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
         }
       } else if (price.model_type === 'tiered' && price.tiered_config?.tiers) {
         const tiers = price.tiered_config.tiers;
-        const firstTier = tiers[0];
-        if (firstTier) {
-          const isZeroCost = firstTier.unit_amount == null || firstTier.unit_amount === '0' || firstTier.unit_amount === '0.00';
-          if (firstTier.last_unit === null && firstTier.first_unit === 0 && isZeroCost) {
-            overageInfo = 'Unlimited';
-            baseValue = 'Unlimited'; // Set baseValue for clarity
-          } else if (firstTier.last_unit !== null && firstTier.last_unit !== undefined && firstTier.last_unit > 0) {
-            const amount = firstTier.last_unit;
-            rawQuantity = amount; // This might not be accurate for pure usage, represents limit
-            let unit = '';
-            if (price.item?.name.includes('GB')) unit = ' GB';
-            if (price.item?.name.includes('Minutes')) unit = ' minutes';
-            if (price.item?.name.includes('Request')) unit = ' requests';
-            baseValue = `${formatNumber(amount)}${unit}`;
-          }
-          if (baseValue !== 'Unlimited' && tiers.length > 1) {
-            const overageTier = tiers[1];
-            if (overageTier && overageTier.unit_amount && parseFloat(overageTier.unit_amount) > 0) {
-              let perUnit = '';
-              if (price.item?.name.includes('GB')) perUnit = 'GB';
-              if (price.item?.name.includes('Minutes')) perUnit = 'minute';
-              if (price.item?.name.includes('Request')) perUnit = 'request';
-              const overageAmount = parseFloat(overageTier.unit_amount);
-              rawOveragePrice = overageAmount;
-              const formattedOverageAmount = overageAmount < 0.01 && overageAmount > 0 ? overageAmount.toString() : overageAmount.toFixed(2);
-              overageInfo = `(then ${currencySymbol}${formattedOverageAmount}${perUnit ? `/${perUnit}` : ''})`;
+        
+        // Always show detailed tier information for tiered pricing
+        if (tiers.length > 0) {
+          tierDetails = []; // Initialize tierDetails array
+          let unit = '';
+          
+          // Determine unit type
+          if (price.item?.name.includes('Token')) unit = ' Tok-CR';
+          else if (price.item?.name.includes('GB')) unit = ' GB';
+          else if (price.item?.name.includes('Minutes')) unit = ' minute';
+          else if (price.item?.name.includes('Request')) unit = ' request';
+          
+          tiers.forEach((tier) => {
+            const unitAmount = tier.unit_amount ? parseFloat(tier.unit_amount) : 0;
+            let range = '';
+            
+            // Determine range with proper null checks and infinity symbol
+            if (typeof tier.first_unit === 'number' && typeof tier.last_unit === 'number') {
+              range = `${formatNumber(tier.first_unit)} - ${formatNumber(tier.last_unit)}`;
+            } else if (typeof tier.first_unit === 'number' && tier.last_unit === null) {
+              range = `${formatNumber(tier.first_unit)} - ∞`;
+            } else if (typeof tier.last_unit === 'number') {
+              range = `0 - ${formatNumber(tier.last_unit)}`;
             }
-          }
+            
+            // Format rate
+            let rate = '';
+            if (unitAmount === 0) {
+              rate = 'Free';
+            } else if (unitAmount < 0.01 && unitAmount > 0) {
+              rate = `${unitAmount} per${unit}`;
+            } else {
+              rate = `${unitAmount.toFixed(2)} per${unit}`;
+            }
+            
+            tierDetails!.push({
+              range,
+              rate,
+              unitAmount
+            });
+          });
+          
+          // Always set detailed view for tiered pricing
+          baseValue = 'Tier Details';
+          overageInfo = undefined;
+          showDetailed = true;
         }
       } else if (price.model_type === 'unit') {
         const unitAmount = price.unit_config?.unit_amount;
@@ -187,6 +216,8 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
       rawOveragePrice: rawOveragePrice,
       statusText: statusText,
       allFutureTransitions: allFutureTransitions,
+      tierDetails: tierDetails || undefined,
+      showDetailed: showDetailed,
     });
   });
 

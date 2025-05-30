@@ -12,20 +12,23 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 export function Header() {
   const router = useRouter()
   const pathname = usePathname()
-  const resetZustand = useCustomerStore((state: CustomerState) => state.reset)
-  const customerId = useCustomerStore((state: CustomerState) => state.customerId);
-  const externalCustomerId = useCustomerStore((state: CustomerState) => state.externalCustomerId);
+  const customerId = useCustomerStore((state: CustomerState) => state.customerId)
+  const externalCustomerId = useCustomerStore((state: CustomerState) => state.externalCustomerId)
+  const selectedInstance = useCustomerStore((state: CustomerState) => state.selectedInstance)
+  const logout = useCustomerStore((state: CustomerState) => state.logout)
   
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   
   const handleSignOut = () => {
-    resetZustand();
-    router.push('/');
+    logout();
+    // Redirect to plan-select if not already on homepage
+    if (pathname !== '/') {
+      router.push('/plan-select');
+    }
   }
 
-  const isHomePage = pathname === '/'
-
   const hasActiveContext = !!customerId;
+  const showSignUpButton = !hasActiveContext && selectedInstance && pathname !== '/';
 
   return (
     <header className="border-b">
@@ -44,25 +47,33 @@ export function Header() {
               <span className="text-sm text-muted-foreground" title={customerId || 'No Internal ID'}>
                  {externalCustomerId || (customerId ? `ID: ${customerId.substring(0, 6)}...` : 'Context Active')}
               </span>
+              {selectedInstance && (
+                <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                  {selectedInstance === 'cloud-infra' ? 'Cloud Infra' : 'AI Agents'}
+                </span>
+              )}
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign Out
               </Button>
             </>
           ) : (
-            isHomePage && (
+            showSignUpButton && (
               <SignUpButton onClick={() => setIsRegistrationOpen(true)} />
             )
           )}
         </div>
       </div>
       
-      <CustomerRegistrationDialog 
-        isOpen={isRegistrationOpen}
-        onClose={() => setIsRegistrationOpen(false)}
-        onRegistrationSuccess={() => {
-          setIsRegistrationOpen(false); 
-        }}
-      />
+      {selectedInstance && (
+        <CustomerRegistrationDialog 
+          isOpen={isRegistrationOpen}
+          onClose={() => setIsRegistrationOpen(false)}
+          onRegistrationSuccess={() => {
+            setIsRegistrationOpen(false); 
+          }}
+          instance={selectedInstance}
+        />
+      )}
     </header>
   )
 }

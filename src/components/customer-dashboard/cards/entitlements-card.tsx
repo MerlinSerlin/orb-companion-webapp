@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Info, CheckCircle2, PlusCircle, Trash2 } from 'lucide-react';
+import { Info, CheckCircle2, PlusCircle, Trash2, Infinity } from 'lucide-react';
 import type { EntitlementFeature } from '@/lib/utils/subscriptionUtils';
 import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
 import type { Subscription } from "@/lib/types"; // Import Subscription type
@@ -59,19 +59,39 @@ export function EntitlementsCard({
                 {/* Left side: Icon, Name */}
                 <div className="flex items-center pt-0.5">
                   <CheckCircle2 className="mr-2 h-4 w-4 text-green-500 flex-shrink-0" />
-                  <span className="font-medium">{feature.name}</span>
+                  <span className="font-medium whitespace-nowrap">{feature.name}</span>
                 </div>
 
                 {/* Right side: Value, Overage, Button, Scheduled Change */}
                 <div className="flex flex-col items-end text-right space-y-1">
-                  <div className="flex flex-col items-end space-y-0.5">
+                  <div className="flex flex-col items-end space-y-1">
                     {/* Current Quantity */}
                     <span className="font-medium">{feature.baseValue}</span>
                     {/* Overage Info */}
-                    {feature.overageInfo && (
+                    {feature.overageInfo && !feature.showDetailed && (
                       <span className="text-xs text-muted-foreground">
                         {feature.overageInfo}
                       </span>
+                    )}
+                    {/* Tier Details - show when detailed view is enabled */}
+                    {feature.showDetailed && feature.tierDetails && feature.tierDetails.length > 0 && (
+                      <div className="mt-1">
+                        <div className="space-y-0.5 text-right">
+                          {feature.tierDetails.map((tier, tierIndex) => (
+                            <div key={tierIndex} className="text-xs leading-tight text-muted-foreground text-right">
+                              {tier.range.includes('∞') ? (
+                                <div className="flex items-center justify-end gap-1">
+                                  <span>{tier.range.replace(' - ∞', '')} -</span>
+                                  <Infinity className="h-3 w-3" />
+                                  <span>: {tier.rate}</span>
+                                </div>
+                              ) : (
+                                <span>{tier.range}: {tier.rate}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
 

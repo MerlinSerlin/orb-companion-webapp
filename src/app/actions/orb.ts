@@ -1,6 +1,8 @@
 'use server'
 
-import { orbClient } from "@/lib/orb"
+import { createOrbClient } from "@/lib/orb"
+import type { OrbInstance } from "@/lib/orb-config"
+import { ORB_INSTANCES } from "@/lib/orb-config"
 import type { 
   GetSubscriptionsResult, 
   Subscription, 
@@ -12,13 +14,14 @@ import type {
   UnitConfig 
 } from "@/lib/types";
 
-export async function createCustomer(name: string, email: string) {
+export async function createCustomer(name: string, email: string, instance: OrbInstance = 'cloud-infra') {
   try {
-    console.log(`Creating customer with name: ${name}, email: ${email}`)
+    console.log(`Creating customer with name: ${name}, email: ${email} for instance: ${instance}`)
 
+    const instanceOrbClient = createOrbClient(instance);
     const formattedExternalId = name.trim().replace(/\s+/g, '_')
 
-    const customer = await orbClient.customers.create({
+    const customer = await instanceOrbClient.customers.create({
       email,
       name,
       external_customer_id: formattedExternalId,
@@ -46,17 +49,25 @@ export async function createCustomer(name: string, email: string) {
  * @param {string} customerId - The Orb ID of the customer.
  * @param {string} planId - The ID of the plan to subscribe to.
  * @param {string} [startDate] - Optional start date for the subscription in YYYY-MM-DD format.
+ * @param {OrbInstance} [instance] - The Orb instance to use for the subscription.
  * @returns {Promise<object>} - An object indicating success or failure, including the subscription details or an error message.
  */
-export async function createSubscription(customerId: string, planId: string, startDate?: string) {
+export async function createSubscription(customerId: string, planId: string, startDate?: string, instance: OrbInstance = 'cloud-infra') {
   try {
-    console.log(`Subscribing customer ${customerId} to plan ${planId}` + (startDate ? ` starting on ${startDate}` : ''));
+    console.log(`Subscribing customer ${customerId} to plan ${planId}` + (startDate ? ` starting on ${startDate}` : '') + ` for instance: ${instance}`)
 
-    const subscription = await orbClient.subscriptions.create({
+    const instanceOrbClient = createOrbClient(instance);
+    
+    const subscriptionPayload = {
       customer_id: customerId,
       plan_id: planId,
       ...(startDate && { start_date: startDate }), // Conditionally add start_date if provided
-    })
+    };
+    
+    console.log('Subscription payload:', JSON.stringify(subscriptionPayload, null, 2));
+    console.log('Making API call to Orb...');
+    
+    const subscription = await instanceOrbClient.subscriptions.create(subscriptionPayload)
     
     console.log(`Subscription created successfully with ID: ${subscription.id}`)
 
@@ -71,6 +82,16 @@ export async function createSubscription(customerId: string, planId: string, sta
     }
   } catch (error) {
     console.error("Error subscribing customer to plan:", error)
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      // @ts-expect-error - accessing error properties for debugging
+      status: error?.status,
+      // @ts-expect-error - accessing error detail property for debugging
+      detail: error?.detail,
+      // @ts-expect-error - accessing error type property for debugging
+      type: error?.type
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to create subscription",
@@ -78,9 +99,10 @@ export async function createSubscription(customerId: string, planId: string, sta
   }
 }
 
-export async function getCustomerSubscriptions(customerId: string): Promise<GetSubscriptionsResult> {
+export async function getCustomerSubscriptions(customerId: string, instance: OrbInstance = 'cloud-infra'): Promise<GetSubscriptionsResult> {
   try {
-    const orbResponse = await orbClient.subscriptions.list({
+    const client = createOrbClient(instance);
+    const orbResponse = await client.subscriptions.list({
       customer_id: [customerId],
     });
 
@@ -128,11 +150,10 @@ export async function getCustomerSubscriptions(customerId: string): Promise<GetS
 }
 
 
-export async function getCustomerDetails(customerId: string): Promise<GetCustomerDetailsResult> {
+export async function getCustomerDetails(customerId: string, instance: OrbInstance = 'cloud-infra'): Promise<GetCustomerDetailsResult> {
   try {
-    console.log(`Fetching details for customer ${customerId}`);
-    
-    const customer = await orbClient.customers.fetch(customerId);
+    const client = createOrbClient(instance);
+    const customer = await client.customers.fetch(customerId);
 
     if (!customer) {
       throw new Error('Customer not found');
@@ -164,21 +185,21 @@ export async function getCustomerDetails(customerId: string): Promise<GetCustome
 export async function editPriceIntervalQuantity(
   subscriptionId: string,
   priceIntervalId: string,
-  transitions: FixedFeeQuantityTransition[] 
+  transitions: FixedFeeQuantityTransition[],
+  instance: OrbInstance = 'cloud-infra'
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[Action] Editing price interval quantity for sub: ${subscriptionId}, interval: ${priceIntervalId}`);
+  console.log(`[Action] Editing price interval quantity for sub: ${subscriptionId}, interval: ${priceIntervalId}, instance: ${instance}`);
   console.log("[Action] Received Transitions:", transitions);
   
-  const apiKey = process.env.ORB_API_KEY;
+  const instanceConfig = ORB_INSTANCES[instance];
+  const apiKey = instanceConfig.apiKey;
   if (!apiKey) {
-    console.error('[Action] Orb API key is not configured.');
+    console.error(`[Action] Orb API key is not configured for instance: ${instance}.`);
     return { success: false, error: 'Server configuration error.' };
   }
   if (!subscriptionId || !priceIntervalId || !transitions || transitions.length === 0) {
      return { success: false, error: 'Missing required parameters for editing price interval quantity.' };
   }
-
-  const orbApiUrl = `https://api.withorb.com/v1/subscriptions/${subscriptionId}/price_intervals`;
 
   const payload = {
     edit: [
@@ -190,34 +211,10 @@ export async function editPriceIntervalQuantity(
   };
   
   console.log("[Action] Sending Payload:", JSON.stringify(payload, null, 2));
-  console.log("[Action] Target URL:", orbApiUrl);
 
   try {
-    const response = await fetch(orbApiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      let errorBody;
-      try {
-        errorBody = await response.json();
-      } catch (parseError) {
-        console.error('[Action] Failed to parse error response body:', parseError);
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
-      }
-      
-      console.error('[Action] Failed to edit Orb price interval:', JSON.stringify(errorBody, null, 2));
-      
-      const errorMessage = errorBody?.validation_errors?.join('; ') 
-                         || errorBody?.title 
-                         || `API Error: ${response.status} ${response.statusText}`;
-      throw new Error(errorMessage);
-    }
+    const instanceOrbClient = createOrbClient(instance);
+    await instanceOrbClient.subscriptions.priceIntervals(subscriptionId, payload);
 
     console.log(`[Action] Successfully edited price interval quantity for interval: ${priceIntervalId}`);
     
@@ -225,34 +222,31 @@ export async function editPriceIntervalQuantity(
 
   } catch (error) {
     console.error("[Action] Error during price interval edit process:", error);
-    
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-
-    return { 
-      success: false, 
-      error: errorMessage
-    };
+    return { success: false, error: errorMessage };
   }
 }
 
 export async function addPriceInterval(
   subscriptionId: string,
   priceId: string,
-  startDate?: string | null 
+  startDate?: string | null,
+  instance: OrbInstance = 'cloud-infra'
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[Action] Adding price ${priceId} to subscription ${subscriptionId}`);
+  console.log(`[Action] Adding price ${priceId} to subscription ${subscriptionId} for instance: ${instance}`);
 
-  const apiKey = process.env.ORB_API_KEY;
+  const instanceConfig = ORB_INSTANCES[instance];
+  const apiKey = instanceConfig.apiKey;
   if (!apiKey) {
-    console.error('[Action] Orb API key is not configured.');
+    console.error(`[Action] Orb API key is not configured for instance: ${instance}.`);
     return { success: false, error: 'Server configuration error.' };
   }
   if (!subscriptionId || !priceId) {
     return { success: false, error: 'Missing required parameters for adding price interval.' };
   }
 
-  const orbApiUrl = `https://api.withorb.com/v1/subscriptions/${subscriptionId}/price_intervals`;
-
+  const instanceOrbClient = createOrbClient(instance);
+  
   let effectiveStartDate: string;
   if (startDate) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
@@ -270,62 +264,29 @@ export async function addPriceInterval(
       console.log(`[Action] Defaulting to today's date: ${effectiveStartDate}`);
   }
 
-  const payload = {
+  await instanceOrbClient.subscriptions.priceIntervals(subscriptionId, {
     add: [
       {
         price_id: priceId,
         start_date: effectiveStartDate,
       },
     ],
-  };
+  });
 
-  console.log("[Action] Sending Payload for ADD:", JSON.stringify(payload, null, 2));
-  console.log("[Action] Target URL:", orbApiUrl);
-
-  try {
-    const response = await fetch(orbApiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      let errorBody;
-      try {
-        errorBody = await response.json();
-      } catch (parseError) {
-        console.error('[Action] Failed to parse error response body:', parseError);
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
-      }
-      console.error('[Action] Failed to add Orb price interval:', JSON.stringify(errorBody, null, 2));
-      const errorMessage = errorBody?.validation_errors?.join('; ') 
-                         || errorBody?.title 
-                         || `API Error: ${response.status} ${response.statusText}`;
-      throw new Error(errorMessage);
-    }
-
-    console.log(`[Action] Successfully added price ${priceId} to subscription ${subscriptionId} starting ${effectiveStartDate}`);
-    
-    return { success: true };
-
-  } catch (error) {
-    console.error("[Action] Error during price interval add process:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-    return { success: false, error: errorMessage };
-  }
+  console.log(`[Action] Successfully added price ${priceId} to subscription ${subscriptionId} starting ${effectiveStartDate}`);
+  return { success: true };
 }
 
 export async function getPriceDetails(
-  priceId: string
+  priceId: string,
+  instance: OrbInstance = 'cloud-infra'
 ): Promise<{ success: boolean; price?: Price | null; error?: string }> {
-  console.log(`[Action] Fetching details for price ${priceId}`);
+  console.log(`[Action] Fetching details for price ${priceId} in instance: ${instance}`);
 
-  const apiKey = process.env.ORB_API_KEY;
+  const instanceConfig = ORB_INSTANCES[instance];
+  const apiKey = instanceConfig.apiKey;
   if (!apiKey) {
-    console.error('[Action] Orb API key is not configured.');
+    console.error(`[Action] Orb API key is not configured for instance: ${instance}.`);
     return { success: false, error: 'Server configuration error.' };
   }
   if (!priceId) {
@@ -333,7 +294,8 @@ export async function getPriceDetails(
   }
 
   try {
-    const fetchedPrice = await orbClient.prices.fetch(priceId);
+    const instanceOrbClient = createOrbClient(instance);
+    const fetchedPrice = await instanceOrbClient.prices.fetch(priceId);
 
     if (!fetchedPrice) {
       throw new Error('Price not found');
@@ -381,25 +343,11 @@ export async function getPriceDetails(
   }
 }
 
-async function getOrbSubscription(subscriptionId: string, apiKey: string): Promise<Subscription | null> {
-  const orbApiUrl = `https://api.withorb.com/v1/subscriptions/${subscriptionId}`;
+async function getOrbSubscription(subscriptionId: string, instance: OrbInstance = 'cloud-infra'): Promise<Subscription | null> {
   try {
-    const response = await fetch(orbApiUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!response.ok) {
-      console.error(`[Action] Failed to fetch Orb subscription ${subscriptionId}: ${response.status} ${response.statusText}`);
-      try {
-        const errorBody = await response.json();
-        console.error("[Action] Orb fetch error body:", errorBody);
-      } catch { /* ignore parse error if errorBody isn't valid JSON */ }
-      return null;
-    }
-    return await response.json() as Subscription;
+    const instanceOrbClient = createOrbClient(instance);
+    const subscription = await instanceOrbClient.subscriptions.fetch(subscriptionId);
+    return subscription as Subscription;
   } catch (error) {
     console.error(`[Action] Error fetching Orb subscription ${subscriptionId}:`, error);
     return null;
@@ -409,20 +357,22 @@ async function getOrbSubscription(subscriptionId: string, apiKey: string): Promi
 export async function removeFixedFeeTransition(
   subscriptionId: string,
   priceIntervalId: string,
-  effectiveDateToRemove: string 
+  effectiveDateToRemove: string,
+  instance: OrbInstance = 'cloud-infra'
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[Action] Removing fixed-fee transition for sub: ${subscriptionId}, interval: ${priceIntervalId}, date: ${effectiveDateToRemove}`);
+  console.log(`[Action] Removing fixed-fee transition for sub: ${subscriptionId}, interval: ${priceIntervalId}, date: ${effectiveDateToRemove}, instance: ${instance}`);
 
-  const apiKey = process.env.ORB_API_KEY;
+  const instanceConfig = ORB_INSTANCES[instance];
+  const apiKey = instanceConfig.apiKey;
   if (!apiKey) {
-    console.error('[Action] Orb API key is not configured.');
+    console.error(`[Action] Orb API key is not configured for instance: ${instance}.`);
     return { success: false, error: 'Server configuration error.' };
   }
   if (!subscriptionId || !priceIntervalId || !effectiveDateToRemove) {
     return { success: false, error: 'Missing required parameters for removing transition.' };
   }
 
-  const currentSubscription = await getOrbSubscription(subscriptionId, apiKey);
+  const currentSubscription = await getOrbSubscription(subscriptionId, instance);
   if (!currentSubscription) {
     return { success: false, error: 'Failed to fetch current subscription details from Orb.' };
   }
@@ -442,7 +392,6 @@ export async function removeFixedFeeTransition(
     console.warn(`[Action] Transition with effective date starting with ${effectiveDateToRemove} not found for removal.`);
   }
 
-  const orbApiUrl = `https://api.withorb.com/v1/subscriptions/${subscriptionId}/price_intervals`;
   const payload = {
     edit: [
       {
@@ -455,29 +404,8 @@ export async function removeFixedFeeTransition(
   console.log("[Action] Sending Payload to remove transition:", JSON.stringify(payload, null, 2));
 
   try {
-    const response = await fetch(orbApiUrl, {
-      method: 'POST', 
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      let errorBody;
-      try {
-        errorBody = await response.json();
-      } catch {
-        console.error('[Action] Failed to parse error response body for removal, using status text.');
-        throw new Error(`API Error during removal: ${response.status} ${response.statusText}`);
-      }
-      console.error('[Action] Failed to update Orb price interval for removal:', JSON.stringify(errorBody, null, 2));
-      const errorMessage = errorBody?.validation_errors?.join('; ') 
-                         || errorBody?.title 
-                         || `API Error: ${response.status} ${response.statusText}`;
-      throw new Error(errorMessage);
-    }
+    const instanceOrbClient = createOrbClient(instance);
+    await instanceOrbClient.subscriptions.priceIntervals(subscriptionId, payload);
 
     console.log(`[Action] Successfully updated transitions for interval: ${priceIntervalId} after removal attempt.`);
     return { success: true };
@@ -486,5 +414,35 @@ export async function removeFixedFeeTransition(
     console.error("[Action] Error during transition removal process:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     return { success: false, error: errorMessage };
+  }
+}
+
+export async function listPlans(instance: OrbInstance = 'cloud-infra') {
+  try {
+    console.log(`Listing plans for instance: ${instance}`)
+    
+    const instanceOrbClient = createOrbClient(instance);
+    const plans = await instanceOrbClient.plans.list();
+    
+    console.log(`Found ${plans.data.length} plans in ${instance} instance:`);
+    plans.data.forEach((plan, index) => {
+      console.log(`  ${index + 1}. ID: ${plan.id}, Name: ${plan.name}`);
+    });
+    
+    return {
+      success: true,
+      plans: plans.data.map(plan => ({
+        id: plan.id,
+        name: plan.name,
+        description: plan.description,
+        status: plan.status
+      }))
+    };
+  } catch (error) {
+    console.error(`Error listing plans for ${instance}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to list plans"
+    };
   }
 } 
