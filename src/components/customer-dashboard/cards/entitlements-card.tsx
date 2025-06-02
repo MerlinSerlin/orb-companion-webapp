@@ -75,16 +75,34 @@ export function EntitlementsCard({
     ? companyConfig.uiPlans.find(p => p.plan_id === activeSubscription!.plan!.id)
     : null;
 
+  // DEBUGGING: Log the features array received by the card
+  console.log("[EntitlementsCard] Features prop:", JSON.stringify(features, null, 2));
+
   const allowedAddOnsToDisplay = (currentPlanDetails?.allowedAddOnPriceIds || [])
     .map(priceId => {
-      const addOnKey = getAddOnKeyByPriceId(priceId); // This now requires selectedInstance to be set
+      // DEBUGGING: Log current priceId from allowedAddOnPriceIds
+      console.log(`[EntitlementsCard] Checking allowed add-on priceId: ${priceId}`);
+
+      const addOnKey = getAddOnKeyByPriceId(priceId); 
       if (!addOnKey) {
         console.warn(`[EntitlementsCard] Could not find addOnKey for priceId: ${priceId}. Instance selected: ${selectedInstance}`);
-        return null; // Skip if key not found (e.g. instance not set for getAddOnKeyByPriceId)
+        return null; 
       }
       const displayName = getAddOnDisplayNameFromKey(addOnKey);
-      // Check if this add-on is already an active feature
-      const isAlreadyActive = features.some(f => f.priceId === priceId);
+      
+      // DEBUGGING: Log before the .some() check
+      console.log(`[EntitlementsCard] About to check if priceId ${priceId} (Display: ${displayName}) is active in features list.`);
+      features.forEach(f => console.log(`[EntitlementsCard] Feature in list: name=${f.name}, priceId=${f.priceId}`));
+
+      const isAlreadyActive = features.some(f => {
+        // DEBUGGING: Log comparison
+        console.log(`[EntitlementsCard] Comparing f.priceId (${f.priceId}) with priceId (${priceId}). Match: ${f.priceId === priceId}`);
+        return f.priceId === priceId;
+      });
+      
+      // DEBUGGING: Log result of isAlreadyActive
+      console.log(`[EntitlementsCard] isAlreadyActive for priceId ${priceId} (Display: ${displayName}): ${isAlreadyActive}`);
+
       return isAlreadyActive ? null : { priceId, displayName, addOnKey };
     })
     .filter(Boolean) as { priceId: string; displayName: string; addOnKey: string }[]; // Type assertion after filter(Boolean)

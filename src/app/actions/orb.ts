@@ -264,17 +264,23 @@ export async function addPriceInterval(
       console.log(`[Action] Defaulting to today's date: ${effectiveStartDate}`);
   }
 
-  await instanceOrbClient.subscriptions.priceIntervals(subscriptionId, {
-    add: [
-      {
-        price_id: priceId,
-        start_date: effectiveStartDate,
-      },
-    ],
-  });
+  try {
+    await instanceOrbClient.subscriptions.priceIntervals(subscriptionId, {
+      add: [
+        {
+          price_id: priceId,
+          start_date: effectiveStartDate,
+        },
+      ],
+    });
 
     console.log(`[Action] Successfully added price ${priceId} to subscription ${subscriptionId} starting ${effectiveStartDate}`);
     return { success: true };
+  } catch (error) {
+    console.error("[Action] Error during add price interval process:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, error: errorMessage };
+  }
 }
 
 export async function getPriceDetails(
