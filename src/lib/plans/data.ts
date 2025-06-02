@@ -115,7 +115,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
     logo: "/brain.svg",
     uiPlans: [
       {
-        plan_id: "3VSx6q7sWotsH2Vg",
+        plan_id: "8LF8PBGEyVgyTSiC",
         name: "Pay As You Go",
         description: "For Solo Builders",
         price: "$10 To Get Started",
@@ -126,6 +126,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Premium Models Add-On", value: "Available" },
         ],
         displayedEntitlementsOverride: [
+          { name: "1000 Token Credits", value: "Included" },
           { name: "Access to Standard Models", value: "Included" },
           { name: "On Demand Usage", value: "Included" },
           { name: "Standard Requests", value: ".05 Token Credits per Token Consumed" },
