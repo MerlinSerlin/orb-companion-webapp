@@ -20,7 +20,8 @@ jest.mock('@/components/ui/header', () => ({
   Header: () => <div data-testid="header">Header</div>,
 }));
 
-jest.mock('@/components/homepage/pricing-plans', () => ({
+// Mock the new PricingPlans component path and props
+jest.mock('@/components/plan-select/pricing-plans', () => ({
   PricingPlans: ({ instance }: { instance: string }) => (
     <div data-testid="pricing-plans">Pricing Plans for {instance}</div>
   ),

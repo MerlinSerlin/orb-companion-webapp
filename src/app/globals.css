@@ -113,7 +113,7 @@
 }
 
 @layer base {
-  @tailwind base;
+  @import "tailwindcss/preflight";
 
   * {
     @apply border-border outline-ring/50;
@@ -123,5 +123,4 @@
   }
 }
 
-@tailwind components;
 @tailwind utilities;

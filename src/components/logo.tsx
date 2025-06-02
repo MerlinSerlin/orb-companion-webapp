@@ -6,7 +6,7 @@ import { Bot } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ORB_INSTANCES, isValidInstance } from "@/lib/orb-config"
-import { getCurrentCompanyConfig } from "@/components/plans/plan-data"
+import { getCurrentCompanyConfig } from "@/lib/plans"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import {
   Dialog,

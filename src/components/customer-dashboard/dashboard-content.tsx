@@ -12,11 +12,12 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types";
 import type { OrbInstance } from "@/lib/orb-config";
-import { ManageFixedPriceItemDialog } from "./dialogs/manage-fixed-price-item-dialog"; // Add new dialog import
+import { ORB_INSTANCES } from "@/lib/orb-config";
+import { getCurrentCompanyConfig } from "@/lib/plans";
+import { ManageFixedPriceItemDialog } from "./dialogs/manage-fixed-price-item-dialog";
 import { AddNewFloatingPriceDialog } from "./dialogs/add-new-floating-price-dialog";
-import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
 import { useQueryClient } from '@tanstack/react-query'
-import { deriveEntitlementsFromSubscription } from "@/lib/utils/subscriptionUtils";
+import { deriveEntitlementsFromSubscription, type EntitlementFeature } from "@/lib/utils/subscriptionUtils";
 import { useCustomerSubscriptions, useCustomerDetails } from "@/hooks/useCustomerData";
 import { SubscriptionDetailsCard } from "./cards/subscription-details-card";
 import { EntitlementsCard } from "./cards/entitlements-card";
@@ -25,91 +26,154 @@ import { removeFixedFeeTransition } from "@/app/actions/orb";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatters";
 
+// Define the sentinel value that an override item can use to indicate it wants the full dynamic feature
+const DYNAMIC_VALUE_SENTINEL = "%%USE_DYNAMIC_VALUE%%";
+
 // Exporting the type for use in the server component page
 export type { Subscription };
 
 interface CustomerDashboardContentProps {
-  customerId: string; // ID from URL Prop
-  instance?: OrbInstance; // Optional instance for multi-instance support
+  customerId: string; // ID from URL Prop, should be the source of truth post-hydration
+  instance?: OrbInstance; // Prop instance, can serve as SSR hint or fallback
 }
 
-export function CustomerDashboardContent({ customerId: customerIdProp, instance = 'cloud-infra' }: CustomerDashboardContentProps) {
+interface AddOnInitiateData {
+  priceId: string;
+  itemName: string;
+}
+
+export function CustomerDashboardContent({ customerId: customerIdProp, instance: instanceProp }: CustomerDashboardContentProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   
-  // --- State for Dialogs --- 
-  const [isAdjustAddOnDialogOpen, setIsAdjustAddOnDialogOpen] = useState(false);
-  const [isAddFeatureDialogOpen, setIsAddFeatureDialogOpen] = useState(false);
+  const [isClientMounted, setIsClientMounted] = useState(false);
+  const [stableCustomerId, setStableCustomerId] = useState<string | null>(null);
+  const [isReadyToFetch, setIsReadyToFetch] = useState(false);
 
-  // Use the custom hook for customer details with instance parameter
+  useEffect(() => {
+    setIsClientMounted(true);
+    if (customerIdProp) {
+      setStableCustomerId(customerIdProp);
+    }
+  }, [customerIdProp]);
+  
+  const storeSelectedInstance = useCustomerStore((state) => state.selectedInstance);
+  const storeCustomerId = useCustomerStore((state) => state.customerId);
+
+  const currentInstance = isClientMounted ? (storeSelectedInstance || instanceProp) : undefined;
+  
+  // State for the generic fixed price item adjustment dialog
+  const [isAdjustFixedPriceDialogOpen, setIsAdjustFixedPriceDialogOpen] = useState(false);
+  const [featureToAdjust, setFeatureToAdjust] = useState<EntitlementFeature | null>(null);
+  
+  const [addOnToInitiate, setAddOnToInitiate] = useState<AddOnInitiateData | null>(null);
+
   const { 
     data: customerDetails, 
-    error: customerDetailsError 
-  } = useCustomerDetails(customerIdProp, instance);
+    error: customerDetailsError,
+    isLoading: customerDetailsLoading 
+  } = useCustomerDetails(
+    stableCustomerId,
+    currentInstance
+  );
 
-  // Use the custom hook for subscriptions with instance parameter
   const {
     data: subscriptions,
     error: subscriptionsError,
     isLoading: subscriptionsLoading,
-    isError: subscriptionsIsError,
-  } = useCustomerSubscriptions(customerIdProp, instance);
+  } = useCustomerSubscriptions(
+    isReadyToFetch ? stableCustomerId : undefined, 
+    isReadyToFetch ? currentInstance : undefined
+  );
 
-  // Effect to sync Zustand store context using the result of the customer details query
   useEffect(() => {
-    // Get store state directly inside the effect
-    const { customerId: currentStoreCustomerId, setCustomerId, setExternalCustomerId } = useCustomerStore.getState();
-    
-    console.log('[Dashboard Context Sync] Effect triggered. Fetched Details:', customerDetails);
-
-    // Check if query has successfully fetched data AND if the fetched ID differs from the store ID
-    if (customerDetails && customerDetails.id !== currentStoreCustomerId) {
-      console.log(`[Dashboard Context Sync] Fetched customer ID (${customerDetails.id}) differs from store ID (${currentStoreCustomerId}). Updating store.`);
+    const { setCustomerId, setExternalCustomerId } = useCustomerStore.getState();
+    if (customerDetails && stableCustomerId === customerDetails.id) {
+      if (storeCustomerId !== customerDetails.id) {
       setCustomerId(customerDetails.id);
       setExternalCustomerId(customerDetails.external_customer_id);
     }
-    // No fetch needed here anymore, query hook handles it.
-    // No cleanup needed for fetch, but effect still runs on dependency change.
+      setIsReadyToFetch(true); 
+    } else if (isClientMounted && stableCustomerId && customerDetails === null && !customerDetailsLoading) {
+      console.warn(`[Dashboard] Customer not found for stableCustomerId (${stableCustomerId}).`);
+      setIsReadyToFetch(false);
+    } else if (isClientMounted && stableCustomerId && customerDetails && stableCustomerId !== customerDetails.id && !customerDetailsLoading) {
+      console.warn(`[Dashboard] Mismatch: stableCustomerId (${stableCustomerId}) !== fetched customerDetails.id (${customerDetails?.id}).`);
+      setIsReadyToFetch(false);
+    } else if (!stableCustomerId || !currentInstance) {
+      setIsReadyToFetch(false);
+    }
+  }, [customerDetails, stableCustomerId, storeCustomerId, isClientMounted, customerDetailsLoading, currentInstance]);
 
-  // Depend on the fetched customerDetails object
-  }, [customerDetails]);
+  const companyConfig = useMemo(() => {
+    if (!currentInstance) return null;
+    const instanceConfigData = ORB_INSTANCES[currentInstance];
+    if (!instanceConfigData) {
+      console.error(`[Dashboard] Configuration for instance "${currentInstance}" not found.`);
+      return null;
+    }
+    return getCurrentCompanyConfig(instanceConfigData.companyKey);
+  }, [currentInstance]);
 
-  // --- Calculate derived state directly during render ---
   const activeSubscription = useMemo(() => {
     if (!subscriptions || subscriptions.length === 0) return null;
-    // Prioritize active, but might need logic for multiple active subs if possible
     return subscriptions.find(sub => sub.status === "active") || subscriptions[0];
   }, [subscriptions]);
 
-  // Derive features/entitlements using the abstracted function
+  const currentPlanUIDetail = useMemo(() => {
+    if (!activeSubscription?.plan?.id || !companyConfig?.uiPlans) {
+      return null;
+    }
+    return companyConfig.uiPlans.find(p => p.plan_id === activeSubscription.plan!.id) || null;
+  }, [activeSubscription, companyConfig]);
+
   const features = useMemo(() => {
-    return deriveEntitlementsFromSubscription(activeSubscription);
-  }, [activeSubscription]);
+    // 1. Always derive all dynamic features first.
+    const allDynamicFeatures: EntitlementFeature[] = deriveEntitlementsFromSubscription(
+      activeSubscription,
+      companyConfig?.entitlementDisplayOrder
+    );
 
-  // --- Find Concurrent Builds data (including priceIntervalId) for Dialog ---
-  const concurrentBuildsFeatureData = useMemo(() => {
-      // Ensure features includes priceIntervalId
-      return features.find(f => f.name === 'Concurrent Builds');
-  }, [features]);
+    // 2. Check if an override is defined and has items
+    if (
+      currentPlanUIDetail?.displayedEntitlementsOverride &&
+      currentPlanUIDetail.displayedEntitlementsOverride.length > 0
+    ) {
+      const processedOverrideFeatures: EntitlementFeature[] = [];
+      for (const overrideItem of currentPlanUIDetail.displayedEntitlementsOverride) {
+        if (overrideItem.value === DYNAMIC_VALUE_SENTINEL) {
+          const dynamicMatch = allDynamicFeatures.find(
+            (dynamicFeature) => dynamicFeature.name === overrideItem.name
+          );
+          if (dynamicMatch) {
+            processedOverrideFeatures.push(dynamicMatch);
+          } else {
+            console.warn(
+              `[Entitlement Override] Dynamic feature named "${overrideItem.name}" requested by override was not found. Skipping.`
+            );
+          }
+        } else {
+          processedOverrideFeatures.push({
+            name: overrideItem.name,
+            baseValue: overrideItem.value,
+            priceId: undefined,
+            priceIntervalId: undefined,
+            overageInfo: undefined,
+            rawQuantity: undefined,
+            rawOveragePrice: undefined,
+            statusText: undefined,
+            allFutureTransitions: undefined,
+            tierDetails: undefined,
+            showDetailed: false,
+          });
+        }
+      }
+      return processedOverrideFeatures;
+    }
+    // 3. No override defined, return all dynamic features
+    return allDynamicFeatures;
+  }, [activeSubscription, companyConfig, currentPlanUIDetail]);
 
-  // --- Handler to open the Add New Feature dialog --- 
-  const handleOpenAddObservability = () => {
-    setIsAddFeatureDialogOpen(true);
-  };
-
-  // --- Data Refresh Function ---
-  const refreshSubscriptionData = () => {
-    queryClient.invalidateQueries({ queryKey: ['subscriptions', customerIdProp] });
-  };
-  
-  // This success handler is for simpler dialogs that should close on success
-  const handleDialogSuccessAndClose = () => {
-      refreshSubscriptionData(); // Also uses the refresh function
-      setIsAdjustAddOnDialogOpen(false); 
-      setIsAddFeatureDialogOpen(false); 
-  };
-
-  // --- Handler to Remove a Scheduled Transition --- 
   const handleRemoveScheduledTransition = async (priceIntervalId: string, effectiveDate: string) => {
     if (!activeSubscription) {
       toast.error("Error", { description: "Active subscription not found." });
@@ -119,96 +183,113 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance 
         toast.error("Error", { description: "Price interval ID is missing for the transition." });
         return;
     }
-
-    console.log(`[UI] Attempting to remove transition for interval ${priceIntervalId} on ${effectiveDate}`);
-
     try {
-      const result = await removeFixedFeeTransition(
-        activeSubscription.id,
-        priceIntervalId,
-        effectiveDate
-      );
-
+      const result = await removeFixedFeeTransition(activeSubscription.id, priceIntervalId, effectiveDate);
       if (result.success) {
-        toast.success("Scheduled Change Removed", {
-          description: `The change scheduled for ${formatDate(effectiveDate)} has been removed.`,
-        });
+        toast.success("Scheduled Change Removed", { description: `The change scheduled for ${formatDate(effectiveDate)} has been removed.` });
         refreshSubscriptionData();
       } else {
         throw new Error(result.error || "Failed to remove scheduled change.");
       }
     } catch (error) {
       console.error("Error removing scheduled transition:", error);
-      toast.error("Removal Failed", { 
-        description: error instanceof Error ? error.message : "An unknown error occurred."
-      });
+      toast.error("Removal Failed", { description: error instanceof Error ? error.message : "An unknown error occurred."});
     }
   };
 
-  // --- Render Logic --- 
+  const refreshSubscriptionData = () => {
+    if (stableCustomerId && currentInstance) {
+        queryClient.invalidateQueries({ queryKey: ['subscriptions', stableCustomerId, currentInstance] });
+        queryClient.invalidateQueries({ queryKey: ['customerDetails', stableCustomerId, currentInstance] });
+    }
+  };
 
-  // Handle combined errors (simplified example)
-  const combinedError = subscriptionsError || customerDetailsError;
-  if (combinedError) {
-    return (
-      <div className="container mx-auto p-8">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Loading Dashboard</AlertTitle>
-          <AlertDescription>
-            {combinedError.message}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  const handleInitiateAddAddOn = (priceId: string, itemName: string) => {
+    setAddOnToInitiate({ priceId, itemName });
+  };
+  
+  // Generic handler to open the adjust dialog
+  const handleOpenAdjustFixedPriceDialog = (feature: EntitlementFeature) => {
+    if (feature.isAdjustableFixedPrice && feature.priceIntervalId) {
+      setFeatureToAdjust(feature);
+      setIsAdjustFixedPriceDialogOpen(true);
+    } else {
+      console.warn("[Dashboard] Attempted to adjust a feature that is not adjustable or missing priceIntervalId:", feature);
+      toast.error("Cannot Adjust Feature", { description: "This feature cannot be adjusted or is missing necessary information." });
+    }
+  };
+  
+  const handleDialogSuccessAndClose = () => {
+      refreshSubscriptionData();
+      setIsAdjustFixedPriceDialogOpen(false); 
+      setFeatureToAdjust(null); // Clear the feature being adjusted
+      setAddOnToInitiate(null);
+  };
 
-  // Prioritize subscription loading/error states for main content display
-  if (subscriptionsLoading) {
+  const showSkeletonView = !isClientMounted || !stableCustomerId || !currentInstance || !companyConfig || !isReadyToFetch || customerDetailsLoading || (isReadyToFetch && subscriptionsLoading);
+
+  if (showSkeletonView) {
     return (
       <>
         <Header />
         <main className="container mx-auto px-4 py-8">
-          <p>Loading subscriptions...</p> {/* Add a loading indicator */}
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="usage">Usage</TabsTrigger>
+              <TabsTrigger value="billing">Billing</TabsTrigger>
+            </TabsList>
+            <TabsContent value="overview">
+              <div className="grid gap-6 md:grid-cols-2">
+                <SubscriptionDetailsCard 
+                  activeSubscription={null} 
+                  customerId={stableCustomerId || "Loading customer..."} 
+                />
+                <EntitlementsCard 
+                  features={[]}
+                  activeSubscription={null}
+                  onOpenAdjustFixedPriceDialog={handleOpenAdjustFixedPriceDialog}
+                  onInitiateAddAddOn={handleInitiateAddAddOn}
+                  onRemoveScheduledTransition={handleRemoveScheduledTransition}
+                  isLoading={true}
+                />
+              </div>
+            </TabsContent>
+            <TabsContent value="usage">
+              <CustomerPortalCard portalUrl={undefined} />
+            </TabsContent>
+            <TabsContent value="billing">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Billing History</CardTitle>
+                  <CardDescription>View your past and upcoming invoices</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table><TableCaption>A list of your recent invoices.</TableCaption><TableHeader><TableRow><TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody><TableRow><TableCell colSpan={5} className="text-center text-muted-foreground"><div className="h-4 bg-muted rounded animate-pulse w-32 mx-auto"></div></TableCell></TableRow></TableBody></Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </main>
       </>
     );
   }
 
-  if (subscriptionsIsError) { // Check specific error state for subscriptions
+  const queryError = customerDetailsError || (isReadyToFetch && subscriptionsError);
+  if (queryError) {
     return (
       <div className="container mx-auto p-8">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Loading Subscriptions</AlertTitle>
-          <AlertDescription>
-            {(subscriptionsError as Error)?.message || 'An unknown error occurred'}
-          </AlertDescription>
-        </Alert>
+        <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error Loading Dashboard</AlertTitle><AlertDescription>{queryError.message}</AlertDescription></Alert>
       </div>
     );
   }
 
-  // Original check for no subscriptions *after* loading and error checks
   if (!subscriptions || subscriptions.length === 0) { 
-    console.log('[Dashboard Render] Rendering No Subscriptions card.');
     return (
       <>
         <Header />
         <main className="container mx-auto px-4 py-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>No Subscriptions Found</CardTitle>
-              <CardDescription>
-                Customer {customerIdProp} doesn&apos;t have any active subscriptions yet.
-              </CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button onClick={() => router.push("/")}>
-                Browse Plans
-              </Button>
-            </CardFooter>
-          </Card>
+          <Card><CardHeader><CardTitle>No Subscriptions Found</CardTitle><CardDescription>Customer {stableCustomerId} doesn&apos;t have any active subscriptions yet.</CardDescription></CardHeader><CardFooter><Button onClick={() => router.push("/")}>Browse Plans</Button></CardFooter></Card>
         </main>
       </>
     );
@@ -218,117 +299,71 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance 
     <>
       <Header />
       <main className="container mx-auto px-4 py-8">
-        {/* Use fetched subscriptions data */}
-        {!subscriptions || subscriptions.length === 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>No Subscriptions Found</CardTitle>
-              <CardDescription>
-                {/* Display internal ID from prop since external ID isn't here anymore */}
-                Customer {customerIdProp} doesn&apos;t have any active subscriptions yet.
-              </CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button onClick={() => router.push("/")}>
-                Browse Plans
-              </Button>
-            </CardFooter>
-          </Card>
-        ) : (
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="usage">Usage</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
             </TabsList>
-            
             <TabsContent value="overview">
               <div className="grid gap-6 md:grid-cols-2">
-                <SubscriptionDetailsCard 
-                  activeSubscription={activeSubscription} 
-                  customerId={customerIdProp} 
-                />
-                
+              <SubscriptionDetailsCard activeSubscription={activeSubscription} customerId={stableCustomerId!} />
                 <EntitlementsCard 
                   features={features}
                   activeSubscription={activeSubscription}
-                  onOpenAddOnDialog={() => setIsAdjustAddOnDialogOpen(true)}
-                  onOpenAddObservabilityDialog={handleOpenAddObservability}
+                  onOpenAdjustFixedPriceDialog={handleOpenAdjustFixedPriceDialog}
+                  onInitiateAddAddOn={handleInitiateAddAddOn}
                   onRemoveScheduledTransition={handleRemoveScheduledTransition}
                 />
               </div>
             </TabsContent>
-            
             <TabsContent value="usage">
               <CustomerPortalCard portalUrl={customerDetails?.portal_url} />
             </TabsContent>
-            
             <TabsContent value="billing">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Billing History</CardTitle>
-                  <CardDescription>
-                    View your past and upcoming invoices
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableCaption>A list of your recent invoices.</TableCaption>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
-                          Billing history coming soon.
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+            <Card><CardHeader><CardTitle>Billing History</CardTitle><CardDescription>View your past and upcoming invoices</CardDescription></CardHeader><CardContent><Table><TableCaption>A list of your recent invoices.</TableCaption><TableHeader><TableRow><TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody><TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Billing history coming soon.</TableCell></TableRow></TableBody></Table></CardContent></Card>
             </TabsContent>
           </Tabs>
-        )}
       </main>
 
-      {/* --- Render Dialogs --- */}
-      
-      {/* Adjust Add-On Dialog (Existing) */}
-      {activeSubscription && concurrentBuildsFeatureData && concurrentBuildsFeatureData.priceIntervalId && (
+      {/* Generic Dialog for Adjustable Fixed Price Items */}
+      {activeSubscription && currentInstance && featureToAdjust && featureToAdjust.priceIntervalId && (
         <ManageFixedPriceItemDialog
-          open={isAdjustAddOnDialogOpen}
-          onOpenChange={setIsAdjustAddOnDialogOpen}
-          itemName="Concurrent Build"
-          dialogTitle="Adjust Concurrent Build Quantity"
-          dialogDescription="Set the total number of concurrent builds effective from the chosen date."
-          currentQuantity={concurrentBuildsFeatureData.rawQuantity ?? 0}
-          addOnPrice={concurrentBuildsFeatureData.rawOveragePrice ?? 0}
+          key={featureToAdjust.priceIntervalId}
+          open={isAdjustFixedPriceDialogOpen}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setIsAdjustFixedPriceDialogOpen(false);
+              setFeatureToAdjust(null);
+            }
+          }}
+          itemName={featureToAdjust.name}
+          dialogTitle={`Adjust ${featureToAdjust.name} Quantity`}
+          dialogDescription={`Set the total number of ${featureToAdjust.name.toLowerCase()} effective from the chosen date.`}
+          currentQuantity={featureToAdjust.rawQuantity ?? 0}
+          addOnPrice={featureToAdjust.rawOveragePrice ?? 0}
           subscriptionId={activeSubscription.id}
-          priceIntervalId={concurrentBuildsFeatureData.priceIntervalId}
+          priceIntervalId={featureToAdjust.priceIntervalId}
           currentPeriodStartDate={activeSubscription.current_period_start}
           activeSubscription={activeSubscription}
-          onScheduleSuccess={refreshSubscriptionData}
-          onRemoveSuccess={refreshSubscriptionData}
-          instance={instance}
+          onScheduleSuccess={handleDialogSuccessAndClose}
+          onRemoveSuccess={handleDialogSuccessAndClose}
+          instance={currentInstance}
+          priceAppliesToFirstUnit={featureToAdjust.priceModelType === 'unit'}
         />
       )}
       
-      {/* Add New Feature Dialog (New) */}
-      {activeSubscription && (
+      {activeSubscription && addOnToInitiate && (
         <AddNewFloatingPriceDialog 
-          open={isAddFeatureDialogOpen}
-          onOpenChange={setIsAddFeatureDialogOpen}
-          itemName="Observability Events"
-          priceIdToAdd={OBSERVABILITY_EVENTS_PRICE_ID}
+          open={!!addOnToInitiate}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setAddOnToInitiate(null);
+          }}
+          itemName={addOnToInitiate.itemName}
+          priceIdToAdd={addOnToInitiate.priceId}
           subscriptionId={activeSubscription.id}
           onSuccess={handleDialogSuccessAndClose}
+          currentInstance={currentInstance!}
         />
       )}
     </>

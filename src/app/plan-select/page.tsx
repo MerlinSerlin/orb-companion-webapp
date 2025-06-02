@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useCustomerStore } from "@/lib/store/customer-store"
 import { Header } from "@/components/ui/header"
-import { PricingPlans } from "@/components/homepage/pricing-plans"
+import { PricingPlans } from "@/components/plan-select/pricing-plans"
 
 export default function PlanSelectPage() {
   const router = useRouter()

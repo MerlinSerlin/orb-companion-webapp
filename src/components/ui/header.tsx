@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import { SignUpButton } from "./sign-up-button"
-import { CustomerRegistrationDialog } from "@/components/homepage/customer-registration-dialog"
+import { CustomerRegistrationDialog } from "@/components/plan-select/customer-registration-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Cloud, Brain } from "lucide-react"
 import { type OrbInstance } from "@/lib/orb-config"
@@ -34,16 +34,13 @@ export function Header() {
   const customerId = useCustomerStore((state: CustomerState) => state.customerId)
   const externalCustomerId = useCustomerStore((state: CustomerState) => state.externalCustomerId)
   const selectedInstance = useCustomerStore((state: CustomerState) => state.selectedInstance)
-  const logout = useCustomerStore((state: CustomerState) => state.logout)
+  const resetStore = useCustomerStore((state: CustomerState) => state.reset)
   
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   
   const handleSignOut = () => {
-    logout();
-    // Redirect to plan-select if not already on homepage
-    if (pathname !== '/') {
-      router.push('/plan-select');
-    }
+    resetStore(); 
+    router.push('/'); // Always redirect to the homepage after reset
   }
 
   const hasActiveContext = !!customerId;

@@ -9,7 +9,7 @@ let _orbClient: Orb | null = null;
 function getOrbClient(): Orb {
   if (!_orbClient) {
     _orbClient = new Orb({
-      apiKey: process.env.ORB_API_KEY,
+  apiKey: process.env.ORB_API_KEY,
     });
   }
   return _orbClient;

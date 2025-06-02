@@ -1,7 +1,4 @@
-// src/components/plans/plan-data.ts
-
-// --- Imports ---
-import { OBSERVABILITY_EVENTS_PRICE_ID } from '@/lib/data/add-on-prices';
+// src/lib/plans/data.ts
 
 // --- Interfaces ---
 export interface EntitlementFeatureDisplay {
@@ -14,7 +11,9 @@ export interface PlanUIDetail {
   name: string;
   description: string;
   price: string;
+  billingInterval?: 'month' | 'year' | null;
   features: EntitlementFeatureDisplay[];
+  displayedEntitlementsOverride?: EntitlementFeatureDisplay[];
   allowedAddOnPriceIds?: string[];
   cta: string;
   popular: boolean;
@@ -44,6 +43,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         name: "Starter",
         description: "For small projects and personal websites",
         price: "$0",
+        billingInterval: null,
         features: [
           { name: "Bandwidth", value: "100 GB" },
           { name: "Edge Requests", value: "1M requests" },
@@ -60,6 +60,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         name: "Pro",
         description: "For growing businesses and high-traffic sites",
         price: "$99",
+        billingInterval: "month",
         features: [
           { name: "Bandwidth", value: "500 GB" },
           { name: "Edge Requests", value: "5M requests" },
@@ -67,7 +68,15 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Builds", value: "Unlimited" },
           { name: "Build Minutes", value: "1,000 minutes" },
         ],
-        allowedAddOnPriceIds: [OBSERVABILITY_EVENTS_PRICE_ID],
+        displayedEntitlementsOverride: [
+          { name: "Bandwidth", value: "500 GB" },
+          { name: "Edge Requests", value: "5M requests" },
+          { name: "Storage", value: "50 GB" },
+          { name: "Builds", value: "Unlimited" },
+          { name: "Build Minutes", value: "1,000 minutes" },
+          { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" }
+        ],
+        allowedAddOnPriceIds: ["AvVRaqgP9zNZWMpW"], // Observability Events price ID
         cta: "Select Pro",
         popular: true,
       },
@@ -76,6 +85,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         name: "Enterprise",
         description: "For large-scale applications with high demands",
         price: "",
+        billingInterval: null,
         features: [
           { name: "SLAs", value: "24/7/365" },
           { name: "Priority Support", value: "24/7" },
@@ -83,7 +93,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Faster Builds", value: "Enabled" },
           { name: "RBAC and SSO", value: "Available" },
         ],
-        allowedAddOnPriceIds: [OBSERVABILITY_EVENTS_PRICE_ID],
+        allowedAddOnPriceIds: ["AvVRaqgP9zNZWMpW"], // Observability Events price ID
         cta: "Contact Sales",
         popular: false,
       },
@@ -104,14 +114,44 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
     logo: "/brain.svg",
     uiPlans: [
       {
-        plan_id: "oQa7qs95URdTSoqG",
-        name: "Enterprise",
-        description: "For large-scale applications with high demands",
-        price: "",
+        plan_id: "3VSx6q7sWotsH2Vg",
+        name: "Pay As You Go",
+        description: "For Solo Builders",
+        price: "$10 To Get Started",
         features: [
-          { name: "Access to All Models", value: "24/7" },
+          { name: "Access to Standard Models", value: "Included" },
+          { name: "On Demand Usage", value: "Available" },
+          { name: "Premium Models Add-On", value: "Available" },
         ],
-        // allowedAddOnPriceIds: [OBSERVABILITY_EVENTS_PRICE_ID],
+        displayedEntitlementsOverride: [
+          { name: "Access to Standard Models", value: "Included" },
+          { name: "On Demand Usage", value: "Included" },
+        ],
+        allowedAddOnPriceIds: ['TEE8AfhNoSybQ8Nj'],
+        cta: "Subscribe",
+        popular: false,
+      },
+      {
+        plan_id: "2f3wsPYBCYcALtkJ",
+        name: "Team",
+        description: "For Teams of Builders",
+        price: "$79",
+        billingInterval: "month",
+        features: [
+          { name: "Access to All Models", value: "Included" },
+          { name: "Multi-repository context", value: "Included" },
+          { name: "Priority Support", value: "Included" },
+          { name: "Centralized Billing", value: "Included" },
+          { name: "10K Token Credits/Month", value: "($100 Value)" },
+          { name: "Up to 20 Users", value: "$10/user/month" },
+        ],
+        displayedEntitlementsOverride: [
+          { name: "10K Token Credits/Month", value: "Included" },
+          { name: "Premium Requests", value: ".25 Token Credits per Token Consumed" },
+          { name: "Standard Requests", value: ".05 Token Credits per Token Consumed" },
+          { name: "Team Members", value: "%%USE_DYNAMIC_VALUE%%" },
+        ],
+        allowedAddOnPriceIds: [], // No add-ons for this plan yet
         cta: "Subscribe",
         popular: false,
       },
@@ -121,31 +161,15 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
 };
 
 // --- Helper Function to Get Current Config (updated) ---
-export const getCurrentCompanyConfig = (companyKey: string = "Cloud_Infra"): CompanyPlanData => {
+export const getCurrentCompanyConfig = (companyKey: string): CompanyPlanData => {
+  if (!companyKey) {
+    throw new Error('Company key is required but not provided. This indicates a bug in the application flow.');
+  }
+  
   const config = COMPANY_PLAN_CONFIGS_MAP[companyKey];
   if (!config) {
-    console.error(`Configuration for company "${companyKey}" not found! Defaulting to Cloud_Infra or first available.`);
-    // Fallback to Cloud_Infra if specific key not found, or the first config if Cloud_Infra itself is missing.
-    return COMPANY_PLAN_CONFIGS_MAP["Cloud_Infra"] || Object.values(COMPANY_PLAN_CONFIGS_MAP)[0] || {
-      companyName: "DefaultFallback",
-      uiPlans: [],
-      entitlementDisplayOrder: []
-    };
+    console.error(`Configuration for company "${companyKey}" not found! Available keys: ${Object.keys(COMPANY_PLAN_CONFIGS_MAP).join(', ')}`);
+    throw new Error(`Invalid company key: "${companyKey}". This indicates a bug in the application configuration.`);
   }
   return config;
 };
-
-// --- Exports for Backwards Compatibility / Current Usage ---
-// Defaulting to "Cloud_Infra" for current direct exports.
-// If you introduce a dynamic way to set the current company context, this could use that.
-export const PLAN_DETAILS: PlanUIDetail[] = getCurrentCompanyConfig("Cloud_Infra").uiPlans;
-export const DESIRED_ENTITLEMENT_ORDER: string[] = getCurrentCompanyConfig("Cloud_Infra").entitlementDisplayOrder;
-
-
-// --- Add-On Price IDs --- 
-// (Existing content, if any, remains here)
-
-
-
-
-

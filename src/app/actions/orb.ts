@@ -57,7 +57,7 @@ export async function createSubscription(customerId: string, planId: string, sta
     console.log(`Subscribing customer ${customerId} to plan ${planId}` + (startDate ? ` starting on ${startDate}` : '') + ` for instance: ${instance}`)
 
     const instanceOrbClient = createOrbClient(instance);
-    
+
     const subscriptionPayload = {
       customer_id: customerId,
       plan_id: planId,
@@ -246,7 +246,7 @@ export async function addPriceInterval(
   }
 
   const instanceOrbClient = createOrbClient(instance);
-  
+
   let effectiveStartDate: string;
   if (startDate) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
@@ -273,8 +273,8 @@ export async function addPriceInterval(
     ],
   });
 
-  console.log(`[Action] Successfully added price ${priceId} to subscription ${subscriptionId} starting ${effectiveStartDate}`);
-  return { success: true };
+    console.log(`[Action] Successfully added price ${priceId} to subscription ${subscriptionId} starting ${effectiveStartDate}`);
+    return { success: true };
 }
 
 export async function getPriceDetails(
