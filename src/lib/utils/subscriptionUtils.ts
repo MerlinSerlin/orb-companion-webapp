@@ -1,6 +1,5 @@
-import type { Subscription, PriceInterval, FixedFeeQuantityTransition } from "@/lib/types";
-import { formatNumber, formatDate } from "./formatters";
-import { DESIRED_ENTITLEMENT_ORDER } from "../../components/plans/plan-data";
+import { formatDate, formatNumber, formatCurrencyValue } from '@/lib/utils/formatters';
+import type { Subscription, PriceInterval, FixedFeeQuantityTransition } from '@/lib/types';
 
 // Define the structure for individual tier details
 export interface TierDetail {
@@ -22,6 +21,8 @@ export interface EntitlementFeature {
   allFutureTransitions?: FixedFeeQuantityTransition[] | undefined;
   tierDetails?: TierDetail[]; // New field for detailed tier information
   showDetailed?: boolean;     // Flag to control whether to show detailed or simple view
+  isAdjustableFixedPrice?: boolean; // New flag for adjustable fixed price items
+  priceModelType?: string; // New: To distinguish unit vs tiered fixed prices etc.
 }
 
 // The ExtendedPriceInterval might be redundant if PriceInterval from types.ts already has fixed_fee_quantity_transitions
@@ -34,7 +35,10 @@ interface ExtendedPriceInterval extends PriceInterval {
   fixed_fee_quantity_transitions?: FixedFeeQuantityTransition[] | null; 
 }
 
-export function deriveEntitlementsFromSubscription(subscription: Subscription | null): EntitlementFeature[] {
+export function deriveEntitlementsFromSubscription(
+  subscription: Subscription | null, 
+  entitlementDisplayOrder: string[] = []
+): EntitlementFeature[] {
   if (!subscription?.price_intervals) {
     return [];
   }
@@ -56,7 +60,7 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
     let overageInfo: string | undefined = undefined;
     let rawQuantity: number | undefined = undefined;
     let rawOveragePrice: number | undefined = undefined;
-    const currencySymbol = price.currency === 'USD' ? '$' : '';
+    
     let statusText: string | null = null; // Initialize statusText
     let allFutureTransitions: FixedFeeQuantityTransition[] | undefined = undefined; // Initialize new field
     let tierDetails: TierDetail[] | undefined = undefined; // Store tier details
@@ -73,8 +77,17 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
           if (price.item.name.includes('Build')) perUnit = 'build';
           const overageAmount = parseFloat(overageTier.unit_amount);
           rawOveragePrice = overageAmount;
-          const formattedOverageAmount = overageAmount.toFixed(2);
-          overageInfo = `(then ${currencySymbol}${formattedOverageAmount}/${perUnit})`;
+          overageInfo = `(then ${formatCurrencyValue(overageAmount, price.currency, { itemName: perUnit, decimalPlaces: 2 })})`;
+        }
+      } else if (price.model_type === 'unit' && price.unit_config?.unit_amount) {
+        // For fixed_price with unit model, the unit_amount is the price per unit.
+        // This can be considered the "overage price" for each additional unit beyond any included base.
+        const unitCost = parseFloat(price.unit_config.unit_amount);
+        if (unitCost >= 0) { // Allow 0 for free additional units if configured that way
+          rawOveragePrice = unitCost;
+          // Overage info might not be needed if the baseValue already implies per unit cost or if it's just a quantity.
+          // For now, let's ensure rawOveragePrice is set for the dialog.
+          // overageInfo = `(${formatCurrencyValue(unitCost, price.currency, { itemName: price.item.name.toLowerCase(), decimalPlaces: 2 })})`;
         }
       }
     } else if (price.price_type === 'usage_price') {
@@ -88,9 +101,12 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
           if (firstTier.package_amount === "0.00" && typeof firstTier.last_unit === 'number') {
             baseValue = `First ${formatNumber(firstTier.last_unit)} ${itemUnitName}: Free`;
           } else if (typeof firstTier.last_unit === 'number' && typeof firstTier.package_size === 'number' && firstTier.package_size > 0) { 
-            baseValue = `First ${formatNumber(firstTier.last_unit)} ${itemUnitName}: ${currencySymbol}${firstTier.package_amount}/${formatNumber(firstTier.package_size)}`;
-          } else if (typeof firstTier.package_size === 'number' && firstTier.package_size > 0) { // Handles cases where first_unit might be 0 and last_unit is null (catch-all for the first tier)
-             baseValue = `${currencySymbol}${firstTier.package_amount} / ${formatNumber(firstTier.package_size)} ${itemUnitName}`;
+            // Use formatCurrencyValue for tiered_package model baseValue
+            const formattedPackagePrice = formatCurrencyValue(firstTier.package_amount, price.currency, { itemName: `${formatNumber(firstTier.package_size)} ${itemUnitName}` });
+            baseValue = `First ${formatNumber(firstTier.last_unit)} ${itemUnitName}: ${formattedPackagePrice}`;
+          } else if (typeof firstTier.package_size === 'number' && firstTier.package_size > 0) {
+            // Use formatCurrencyValue for tiered_package model baseValue (catch-all first tier)
+            baseValue = formatCurrencyValue(firstTier.package_amount, price.currency, { itemName: `${formatNumber(firstTier.package_size)} ${itemUnitName}` });
           } else {
              baseValue = "Usage-based (tiered package)"; // Fallback for unexpected first tier
           }
@@ -99,7 +115,8 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
             const overageTier = tiers[1];
             // Ensure package_size is a positive number before formatting
             if (overageTier && parseFloat(overageTier.package_amount) >= 0 && typeof overageTier.package_size === 'number' && overageTier.package_size > 0) {
-              overageInfo = `(then ${currencySymbol}${overageTier.package_amount} / ${formatNumber(overageTier.package_size)} ${itemUnitName})`;
+              // Use formatCurrencyValue for tiered_package model overageInfo
+              overageInfo = `(then ${formatCurrencyValue(overageTier.package_amount, price.currency, { itemName: `${formatNumber(overageTier.package_size)} ${itemUnitName}` })})`;
             }
           }
         } else {
@@ -114,7 +131,8 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
         } 
         else if (parseFloat(package_amount) > 0 && typeof package_size === 'number' && package_size > 0) {
             baseValue = "Included";
-            overageInfo = `(${currencySymbol}${package_amount} / ${formatNumber(package_size)} ${itemUnitName})`;
+            // Use formatCurrencyValue for package model overageInfo
+            overageInfo = `(${formatCurrencyValue(package_amount, price.currency, { itemName: `${formatNumber(package_size)} ${itemUnitName}` })})`;
         } else {
             baseValue = "Usage-based (package)";
             overageInfo = undefined;
@@ -125,13 +143,7 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
         // Always show detailed tier information for tiered pricing
         if (tiers.length > 0) {
           tierDetails = []; // Initialize tierDetails array
-          let unit = '';
-          
-          // Determine unit type
-          if (price.item?.name.includes('Token')) unit = ' Tok-CR';
-          else if (price.item?.name.includes('GB')) unit = ' GB';
-          else if (price.item?.name.includes('Minutes')) unit = ' minute';
-          else if (price.item?.name.includes('Request')) unit = ' request';
+          const perItemNameForTier = price.item?.name || 'unit'; // The item it's "per"
           
           tiers.forEach((tier) => {
             const unitAmount = tier.unit_amount ? parseFloat(tier.unit_amount) : 0;
@@ -150,10 +162,11 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
             let rate = '';
             if (unitAmount === 0) {
               rate = 'Free';
-            } else if (unitAmount < 0.01 && unitAmount > 0) {
-              rate = `${unitAmount} per${unit}`;
             } else {
-              rate = `${unitAmount.toFixed(2)} per${unit}`;
+              // For tiered, display as "AMOUNT CURRENCY per PER_ITEM_NAME"
+              // formatCurrencyValue handles the AMOUNT CURRENCY part, then we append "per item_name"
+              const amountAndCurrency = formatCurrencyValue(unitAmount, price.currency, { decimalPlaces: (unitAmount < 0.01 && unitAmount > 0) ? undefined : 2 }); // Use more decimals for small amounts
+              rate = `${amountAndCurrency} per ${perItemNameForTier.toLowerCase()}`;
             }
             
             tierDetails!.push({
@@ -170,7 +183,14 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
         }
       } else if (price.model_type === 'unit') {
         const unitAmount = price.unit_config?.unit_amount;
-        baseValue = unitAmount && parseFloat(unitAmount) > 0 ? `${currencySymbol}${unitAmount}/${price.item?.name || 'unit'}` : 'Included';
+        const itemNameOrUnit = price.item?.name || 'unit';
+        // For unit model, use formatCurrencyValue.
+        // It will handle cases like "0.05 token credits" or "$0.50 / event"
+        if (unitAmount && parseFloat(unitAmount) > 0) {
+            baseValue = formatCurrencyValue(unitAmount, price.currency, { itemName: itemNameOrUnit });
+        } else {
+          baseValue = 'Included';
+        }
         const isZeroCostUnit = unitAmount == null || unitAmount === '0' || unitAmount === '0.00';
         if (isZeroCostUnit) {
           overageInfo = 'Unlimited'; // Or baseValue = 'Unlimited'
@@ -206,6 +226,9 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
 
     const displayName = price.item.name.replace(/^Nimbus Scale\s+/, '');
 
+    // Define item names that are fixed price but should not be user-adjustable in the UI
+    const NON_ADJUSTABLE_FIXED_PRICE_ITEM_NAMES = ["Included Allocation (Tok-CR)"];
+
     entitlementFeatures.push({
       priceId: price.id,
       priceIntervalId: currentInterval.id,
@@ -218,13 +241,17 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
       allFutureTransitions: allFutureTransitions,
       tierDetails: tierDetails || undefined,
       showDetailed: showDetailed,
+      isAdjustableFixedPrice: price.price_type === 'fixed_price' && 
+                                price.item.name !== 'Platform Fee' &&
+                                !NON_ADJUSTABLE_FIXED_PRICE_ITEM_NAMES.includes(price.item.name),
+      priceModelType: price.model_type,
     });
   });
 
-  // Sort the features based on the DESIRED_ENTITLEMENT_ORDER
+  // Sort the features based on the entitlementDisplayOrder
   entitlementFeatures.sort((a, b) => {
-    const indexA = DESIRED_ENTITLEMENT_ORDER.indexOf(a.name);
-    const indexB = DESIRED_ENTITLEMENT_ORDER.indexOf(b.name);
+    const indexA = entitlementDisplayOrder.indexOf(a.name);
+    const indexB = entitlementDisplayOrder.indexOf(b.name);
 
     // If both items are in the desired order list, sort by their index
     if (indexA !== -1 && indexB !== -1) {
@@ -250,4 +277,10 @@ export function deriveEntitlementsFromSubscription(subscription: Subscription | 
   }
 
   return entitlementFeatures;
+}
+
+export const formatActiveSubscriptionWithUsage = () => {
+  // TODO: Implementation of the function
+  // This function was previously declared but not implemented
+  return null;
 } 

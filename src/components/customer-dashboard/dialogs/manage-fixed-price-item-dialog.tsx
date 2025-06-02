@@ -41,6 +41,7 @@ interface ManageFixedPriceItemDialogProps {
   dialogTitle?: string;
   dialogDescription?: string;
   instance: OrbInstance;
+  priceAppliesToFirstUnit?: boolean; // New prop
 }
 
 export function ManageFixedPriceItemDialog({
@@ -57,7 +58,8 @@ export function ManageFixedPriceItemDialog({
   onRemoveSuccess,
   dialogTitle,
   dialogDescription,
-  instance
+  instance,
+  priceAppliesToFirstUnit = false
 }: ManageFixedPriceItemDialogProps) {
 
   const [newQuantityState, setNewQuantityState] = React.useState<number>(currentQuantity);
@@ -110,12 +112,21 @@ export function ManageFixedPriceItemDialog({
   }, [currentPeriodStartDate, formatDateForInputInternal]);
 
   const quantityChangeDisplay = newQuantityState - currentQuantity;
-  const calculateCost = (qty: number) => Math.max(0, qty - 1) * addOnPrice; // Assuming first unit might be free based on typical add-on pricing
-  const currentCostDisplay = calculateCost(currentQuantity);
-  const newCostDisplay = calculateCost(newQuantityState);
+  
+  // Updated cost calculation logic
+  const calculateCost = (qty: number, appliesToFirst: boolean | undefined, unitPrice: number) => {
+    if (appliesToFirst) {
+      return qty * unitPrice;
+    } else {
+      return Math.max(0, qty - 1) * unitPrice;
+    }
+  };
+
+  const currentCostDisplay = calculateCost(currentQuantity, priceAppliesToFirstUnit, addOnPrice);
+  const newCostDisplay = calculateCost(newQuantityState, priceAppliesToFirstUnit, addOnPrice);
   const costChangeDisplay = newCostDisplay - currentCostDisplay;
 
-  const handleDecrement = () => setNewQuantityState((prev: number) => Math.max(1, prev - 1));
+  const handleDecrement = () => setNewQuantityState((prev: number) => Math.max(priceAppliesToFirstUnit ? 0 : 1, prev - 1)); // Allow 0 if price applies to first unit
   const handleIncrement = () => setNewQuantityState((prev: number) => prev + 1);
 
   const handleScheduleConfirm = async () => {

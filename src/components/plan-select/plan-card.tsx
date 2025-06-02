@@ -1,0 +1,84 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Check } from "lucide-react"
+
+interface PlanFeature {
+  name: string
+  value: string
+}
+
+interface PlanCardProps {
+  plan_id: string
+  name: string
+  description: string
+  price: string
+  billingInterval?: 'month' | 'year' | null
+  features: PlanFeature[]
+  popular?: boolean
+  onSubscribe: () => void
+  onContactSales: () => void
+}
+
+export function PlanCard({
+  plan_id,
+  name,
+  description,
+  price,
+  billingInterval,
+  features,
+  popular = false,
+  onSubscribe,
+  onContactSales,
+}: PlanCardProps) {
+  return (
+    <Card className={`relative ${popular ? 'border-blue-500 shadow-lg' : ''}`}>
+      {popular && (
+        <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500">
+          Most Popular
+        </Badge>
+      )}
+
+      <CardHeader>
+        <CardTitle className="text-xl">{name}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+        <div className="mt-4">
+          <span className="text-3xl font-bold">{price}</span>
+          {billingInterval && <span className="text-sm text-gray-500 ml-1">/{billingInterval}</span>}
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <ul className="space-y-3">
+          {features.map((feature, index) => (
+            <li key={index} className="flex items-center">
+              <Check className="h-4 w-4 text-green-500 mr-3" />
+              <span className="text-sm">{feature.name}: {feature.value}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+
+      <CardFooter>
+        {plan_id === 'nimbus_scale_enterprise' || plan_id === 'enterprise' ? (
+          <Button 
+            onClick={onContactSales}
+            className="w-full"
+            variant="outline"
+          >
+            Contact Sales
+          </Button>
+        ) : (
+          <Button 
+            onClick={onSubscribe}
+            className="w-full"
+          >
+            Subscribe
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  )
+} 

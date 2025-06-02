@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { useCustomerStore, type CustomerState } from "@/lib/store/customer-store"
 import { createSubscription } from "@/app/actions/orb"
 import { type OrbInstance, ORB_INSTANCES } from "@/lib/orb-config"
-import { getCurrentCompanyConfig, type PlanUIDetail } from "../plans/plan-data"
+import { getCurrentCompanyConfig, type PlanUIDetail } from "@/lib/plans"
 import {
   Dialog,
   DialogContent,

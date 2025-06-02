@@ -2,7 +2,8 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PlanSelectionDialog } from './plan-selection-dialog';
 import { createSubscription } from '@/app/actions/orb';
-import { PLAN_DETAILS } from '@/components/plans/plan-data';
+import { getCurrentCompanyConfig } from '@/lib/plans';
+import { ORB_INSTANCES } from '@/lib/orb-config';
 import { CustomerState } from '@/lib/store/customer-store';
 import { useCustomerStore } from '@/lib/store/customer-store';
 
@@ -30,12 +31,17 @@ describe('PlanSelectionDialog', () => {
   const mockOnSubscriptionSuccess = jest.fn();
   const mockUseCustomerStore = useCustomerStore as jest.MockedFunction<typeof useCustomerStore>;
 
+  // Get test plan data using the new dynamic structure
+  const instanceConfig = ORB_INSTANCES['cloud-infra'];
+  const companyConfig = getCurrentCompanyConfig(instanceConfig.companyKey);
+  const testPlan = companyConfig.uiPlans[0];
+
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the implementation to default (logged-in) before each test
     mockUseCustomerStore.mockImplementation((selector) => {
         const state: Partial<CustomerState> = {
-            pendingPlanId: PLAN_DETAILS[0].plan_id, 
+            pendingPlanId: testPlan.plan_id, 
             customerId: 'cus_123', // Default to logged-in
             externalCustomerId: 'test_customer', 
             setPendingPlanId: jest.fn(),
@@ -55,7 +61,7 @@ describe('PlanSelectionDialog', () => {
     // Arrange: Set the mock store implementation to simulate logged-out state
     mockUseCustomerStore.mockImplementation((selector) => {
         const state: Partial<CustomerState> = {
-          pendingPlanId: PLAN_DETAILS[0].plan_id, // Plan selected
+          pendingPlanId: testPlan.plan_id, // Plan selected
           customerId: null, // Simulate logged-out state
           externalCustomerId: null,
           // Include functions if selector needs them
@@ -75,7 +81,7 @@ describe('PlanSelectionDialog', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubscriptionSuccess={mockOnSubscriptionSuccess}
-        // customerId prop is removed - component reads from store
+        instance="cloud-infra"
       />
     );
 

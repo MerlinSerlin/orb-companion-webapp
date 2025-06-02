@@ -55,7 +55,7 @@ jest.mock('@/lib/orb-config', () => ({
   }
 }));
 
-jest.mock('@/components/plans/plan-data', () => ({
+jest.mock('@/lib/plans', () => ({
   getCurrentCompanyConfig: jest.fn((companyKey) => ({
     companyName: companyKey === 'nimbusscale' ? 'NimbusScale' : 'Default Company'
   }))

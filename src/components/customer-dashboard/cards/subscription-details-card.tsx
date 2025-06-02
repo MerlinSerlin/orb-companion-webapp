@@ -60,7 +60,32 @@ export function SubscriptionDetailsCard({ activeSubscription, customerId }: Subs
             </div>
           </dl>
         ) : (
-          <p>Processing subscription details...</p>
+          <dl className="space-y-4 text-sm">
+            <div className="flex justify-between">
+              <dt className="font-medium text-gray-500">Plan Name</dt>
+              <dd className="h-4 bg-muted rounded animate-pulse w-24"></dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="font-medium text-gray-500">Status</dt>
+              <dd className="h-6 bg-muted rounded animate-pulse w-16"></dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="font-medium text-gray-500">Start Date</dt>
+              <dd className="h-4 bg-muted rounded animate-pulse w-20"></dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="font-medium text-gray-500">Current Period Starts</dt>
+              <dd className="h-4 bg-muted rounded animate-pulse w-20"></dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="font-medium text-gray-500">Current Period Ends</dt>
+              <dd className="h-4 bg-muted rounded animate-pulse w-20"></dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="font-medium text-gray-500">Subscription ID</dt>
+              <dd className="h-4 bg-muted rounded animate-pulse w-32 font-mono"></dd>
+            </div>
+          </dl>
         )}
       </CardContent>
       <CardFooter>

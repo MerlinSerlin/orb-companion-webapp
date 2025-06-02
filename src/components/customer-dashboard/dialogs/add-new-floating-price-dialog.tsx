@@ -14,6 +14,8 @@ import type { Price } from "@/lib/types"; // Import Price type
 import { Input } from "@/components/ui/input"; 
 import { Label } from "@/components/ui/label"; 
 import { cn } from "@/lib/utils";
+import type { OrbInstance } from "@/lib/orb-config"; // Import OrbInstance
+import { formatCurrencyValue } from "@/lib/utils/formatters"; // Import the new formatter
 
 // Define JsonValue type for ApiPreviewDialog
 type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
@@ -26,52 +28,58 @@ interface AddNewFloatingPriceDialogProps {
   priceIdToAdd: string;
   subscriptionId: string;
   onSuccess?: () => void;
+  currentInstance: OrbInstance; // Add currentInstance prop
 }
 
 // Helper function to display price info
 function displayPriceInfo(price: Price | null): string {
   if (!price) return "Price details not available.";
-  const currencySymbol = price.currency === 'USD' ? '$' : '';
-  const itemName = price.item?.name || 'units';
+  
+  const itemNameForDisplay = price.item?.name || 'units';
 
   switch (price.model_type) {
     case 'package':
       if (price.package_config) {
         const { package_amount, package_size } = price.package_config;
-        return `${currencySymbol}${package_amount} / ${package_size.toLocaleString()} ${itemName}`;
+        // Use the new formatter for package pricing
+        return formatCurrencyValue(package_amount, price.currency, { itemName: `${package_size.toLocaleString()} ${itemNameForDisplay}`, perItemSuffix: ' / ' });
       }
       break;
     case 'unit':
       if (price.unit_config?.unit_amount) {
-        return `${currencySymbol}${price.unit_config.unit_amount} / ${itemName}`;
+        // Use the new formatter for unit pricing. If itemName is generic like 'units' or same as currency, it will be handled.
+        return formatCurrencyValue(price.unit_config.unit_amount, price.currency, { itemName: itemNameForDisplay });
       }
       break;
     case 'tiered_package':
       if (price.tiered_package_config?.tiers && price.tiered_package_config.tiers.length > 0) {
         const tiers = price.tiered_package_config.tiers;
         let description = "";
-        // First tier (e.g., free allotment)
+        
         const firstTier = tiers[0];
         if (firstTier) {
           const firstTierLimit = firstTier.last_unit?.toLocaleString() || "initial";
           const firstTierAmount = parseFloat(firstTier.package_amount);
-          description += `First ${firstTierLimit} ${itemName}: ${firstTierAmount === 0 ? 'Free' : `${currencySymbol}${firstTier.package_amount}`}`;
+          const firstTierPriceDisplay = firstTierAmount === 0 ? 'Free' : formatCurrencyValue(firstTier.package_amount, price.currency);
+          description += `First ${firstTierLimit} ${itemNameForDisplay}: ${firstTierPriceDisplay}`;
         }
-        // Second tier (e.g., overage)
+        
         if (tiers.length > 1) {
           const secondTier = tiers[1];
           if (secondTier) {
-            description += `, then ${currencySymbol}${secondTier.package_amount} / ${secondTier.package_size.toLocaleString()} ${itemName}`;
+            const secondTierPackageSize = secondTier.package_size.toLocaleString();
+            const secondTierPriceDisplay = formatCurrencyValue(secondTier.package_amount, price.currency, { itemName: `${secondTierPackageSize} ${itemNameForDisplay}`, perItemSuffix: ' / ' });
+            description += `, then ${secondTierPriceDisplay}`;
           }
         }
         return description;
       }
       break;
-    // Add cases for other model_types like 'tiered', 'matrix', 'grouped_tiered' if needed
     default:
-      break; // Fall through to generic display
+      break; 
   }
-  return `Price: ${price.name} (Type: ${price.model_type})`; // Fallback for unhandled or simple cases
+  // Fallback for unhandled or simple cases, using the formatter
+  return formatCurrencyValue(price.name, price.currency, {itemName: `(Type: ${price.model_type})`, perItemSuffix: ' ' });
 }
 
 // Copied from AddOnDialog
@@ -89,7 +97,8 @@ export function AddNewFloatingPriceDialog({
   itemName, 
   priceIdToAdd,
   subscriptionId,
-  onSuccess 
+  onSuccess,
+  currentInstance // Destructure prop
 }: AddNewFloatingPriceDialogProps) {
   
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
@@ -110,7 +119,8 @@ export function AddNewFloatingPriceDialog({
         setErrorLoadingPrice(null);
         setPriceDetails(null); // Clear previous details
         try {
-          const result = await getPriceDetails(priceIdToAdd);
+          // Pass currentInstance to the server action
+          const result = await getPriceDetails(priceIdToAdd, currentInstance);
           if (result.success && result.price) {
             setPriceDetails(result.price);
           } else {
@@ -129,7 +139,7 @@ export function AddNewFloatingPriceDialog({
       setIsLoadingPrice(false);
       setErrorLoadingPrice(null);
     }
-  }, [open, priceIdToAdd]);
+  }, [open, priceIdToAdd, currentInstance]); // Add currentInstance to dependency array
 
   // Reset state when dialog opens, including the date
   React.useEffect(() => {
@@ -150,11 +160,11 @@ export function AddNewFloatingPriceDialog({
     const effectiveStartDate = startDate ? formatDateForInput(startDate) : todayFormatted;
     
     // Update log message if desired
-    console.log(`[AddNewFloatingPriceDialog] Confirming add with start date: ${effectiveStartDate}`);
+    console.log(`[AddNewFloatingPriceDialog] Confirming add with start date: ${effectiveStartDate} for instance: ${currentInstance}`);
 
     try {
-      // Pass the chosen start date to the action
-      const result = await addPriceInterval(subscriptionId, priceIdToAdd, effectiveStartDate);
+      // Pass the chosen start date and currentInstance to the action
+      const result = await addPriceInterval(subscriptionId, priceIdToAdd, effectiveStartDate, currentInstance);
       if (result.success) {
         toast.success(`${itemName} Added`, {
           description: `Successfully added ${itemName} starting ${effectiveStartDate}.`, // Include date in message 
