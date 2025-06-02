@@ -39,7 +39,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
     logo: "/cloud.svg",
     uiPlans: [
       {
-        plan_id: "kRDwGmuatwQJdNLY",
+        plan_id: "YCzbKQqSz3N74yZM",
         name: "Starter",
         description: "For small projects and personal websites",
         price: "$0",
@@ -56,7 +56,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         popular: false,
       },
       {
-        plan_id: "egBAFXj9pykJhyeA",
+        plan_id: "bvVSqtKcsErM9Rxi",
         name: "Pro",
         description: "For growing businesses and high-traffic sites",
         price: "$99",
@@ -74,9 +74,10 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Storage", value: "50 GB" },
           { name: "Builds", value: "Unlimited" },
           { name: "Build Minutes", value: "1,000 minutes" },
-          { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" }
+          { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" },
+          { name: "Observability", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
-        allowedAddOnPriceIds: ["AvVRaqgP9zNZWMpW"], // Observability Events price ID
+        allowedAddOnPriceIds: ["RmP4RPnRjGpTE29V"], // Observability price ID
         cta: "Select Pro",
         popular: true,
       },
@@ -93,7 +94,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Faster Builds", value: "Enabled" },
           { name: "RBAC and SSO", value: "Available" },
         ],
-        allowedAddOnPriceIds: ["AvVRaqgP9zNZWMpW"], // Observability Events price ID
+        allowedAddOnPriceIds: ["RmP4RPnRjGpTE29V"], // Observability price ID
         cta: "Contact Sales",
         popular: false,
       },
@@ -105,7 +106,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
       "Builds",
       "Edge Requests",
       "Storage GB",
-      "Observability Events",
+      "Observability",
       "Concurrent Builds"
     ],
   },
@@ -118,6 +119,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         name: "Pay As You Go",
         description: "For Solo Builders",
         price: "$10 To Get Started",
+        billingInterval: null,
         features: [
           { name: "Access to Standard Models", value: "Included" },
           { name: "On Demand Usage", value: "Available" },
@@ -126,6 +128,8 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         displayedEntitlementsOverride: [
           { name: "Access to Standard Models", value: "Included" },
           { name: "On Demand Usage", value: "Included" },
+          { name: "Standard Requests", value: ".05 Token Credits per Token Consumed" },
+          { name: "Premium Requests", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
         allowedAddOnPriceIds: ['TEE8AfhNoSybQ8Nj'],
         cta: "Subscribe",

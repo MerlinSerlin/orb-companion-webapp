@@ -153,18 +153,24 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
             );
           }
         } else {
+          const dynamicMatch = allDynamicFeatures.find(
+            (dynamicFeature) => dynamicFeature.name === overrideItem.name
+          );
+
           processedOverrideFeatures.push({
+            priceId: dynamicMatch?.priceId,
+            priceIntervalId: dynamicMatch?.priceIntervalId,
+            rawQuantity: dynamicMatch?.rawQuantity,
+            rawOveragePrice: dynamicMatch?.rawOveragePrice,
+            statusText: dynamicMatch?.statusText, 
+            allFutureTransitions: dynamicMatch?.allFutureTransitions,
+            tierDetails: dynamicMatch?.tierDetails,
+            showDetailed: dynamicMatch?.showDetailed || false, 
+            isAdjustableFixedPrice: dynamicMatch?.isAdjustableFixedPrice || false, 
+            priceModelType: dynamicMatch?.priceModelType,
+            overageInfo: dynamicMatch?.overageInfo, 
             name: overrideItem.name,
             baseValue: overrideItem.value,
-            priceId: undefined,
-            priceIntervalId: undefined,
-            overageInfo: undefined,
-            rawQuantity: undefined,
-            rawOveragePrice: undefined,
-            statusText: undefined,
-            allFutureTransitions: undefined,
-            tierDetails: undefined,
-            showDetailed: false,
           });
         }
       }

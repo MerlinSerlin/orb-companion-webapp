@@ -5,13 +5,13 @@ import { ORB_INSTANCES } from '@/lib/orb-config';
 // This replaces the hardcoded approach with a structure that can grow
 const ADD_ON_PRICE_MAPPINGS = {
   Cloud_Infra: {
-    OBSERVABILITY_EVENTS: "AvVRaqgP9zNZWMpW", // Test price ID
+    OBSERVABILITY: "RmP4RPnRjGpTE29V", // Updated to the new price ID
     // Add more add-ons for Cloud_Infra here as needed
     // BACKUP_STORAGE: "another_price_id",
     // PREMIUM_SUPPORT: "yet_another_price_id"
   },
   AI_Agents: {
-    PREMIUM_MODELS: "TEE8AfhNoSybQ8Nj", // Changed from PREMIUM_REQUESTS to match expected usage
+    PREMIUM_REQUESTS: "TEE8AfhNoSybQ8Nj", // Changed key from PREMIUM_MODELS
     // Add AI-specific add-ons here
   }
 } as const;
@@ -97,11 +97,11 @@ export const getAddOnDisplayNameFromKey = (addOnKey: string): string => {
 };
 
 // For backwards compatibility during migration
-export const getObservabilityEventsPrice = () => getAddOnPriceId('OBSERVABILITY_EVENTS');
+export const getObservabilityPrice = () => getAddOnPriceId('OBSERVABILITY');
 
 // Readable constant for the observability events price ID
-export const OBSERVABILITY_EVENTS_PRICE_ID = 'AvVRaqgP9zNZWMpW';
-export const PREMIUM_MODELS_PRICE_ID = 'TEE8AfhNoSybQ8Nj';
+export const OBSERVABILITY_PRICE_ID = 'RmP4RPnRjGpTE29V';
+export const PREMIUM_REQUESTS_PRICE_ID = 'TEE8AfhNoSybQ8Nj'; // Renamed constant
 
 // Better approach: use the generic functions directly
 // const observabilityId = getAddOnPriceId('OBSERVABILITY_EVENTS');

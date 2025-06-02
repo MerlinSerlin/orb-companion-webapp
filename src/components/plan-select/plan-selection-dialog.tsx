@@ -142,7 +142,12 @@ export function PlanSelectionDialog({
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">{selectedPlan.name}</h3>
                   {selectedPlan.price && (
-                    <div className="text-lg font-bold">{selectedPlan.price}<span className="text-sm text-muted-foreground">/month</span></div>
+                    <div className="text-lg font-bold">
+                      {selectedPlan.price}
+                      {selectedPlan.billingInterval && (
+                        <span className="text-sm text-muted-foreground">/{selectedPlan.billingInterval}</span>
+                      )}
+                    </div>
                   )}
                 </div>
                 
