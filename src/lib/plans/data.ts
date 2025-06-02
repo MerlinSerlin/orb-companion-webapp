@@ -119,6 +119,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         name: "Pay As You Go",
         description: "For Solo Builders",
         price: "$10 To Get Started",
+        billingInterval: null,
         features: [
           { name: "Access to Standard Models", value: "Included" },
           { name: "On Demand Usage", value: "Available" },
