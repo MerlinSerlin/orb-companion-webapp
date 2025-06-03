@@ -12,6 +12,7 @@ import { ORB_INSTANCES, type OrbInstance } from "@/lib/orb-config"
 import { PlanSelectionDialog } from "./plan-selection-dialog"
 import { CustomerRegistrationDialog } from "./customer-registration-dialog"
 import { PlanCard } from "./plan-card"
+import { EnterpriseContactDialog as AliasedEnterpriseContactDialog } from "@/components/dialogs/enterprise-contact-dialog"
 
 interface PricingPlansProps {
   instance: OrbInstance 
@@ -20,6 +21,7 @@ interface PricingPlansProps {
 export function PricingPlans({ instance }: PricingPlansProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
+  const [isContactSalesInfoOpen, setIsContactSalesInfoOpen] = useState(false)
   const setPendingPlanId = useCustomerStore((state) => state.setPendingPlanId)
   const customerId = useCustomerStore((state) => state.customerId)
 
@@ -46,14 +48,12 @@ export function PricingPlans({ instance }: PricingPlansProps) {
   }
 
   const handleContactSales = () => {
-    // For enterprise plans, directly open mailto or a contact form/modal
-    // This specific action is now handled by the PlanCard based on plan_id, 
-    // but if a general contact sales button is needed elsewhere, this function can be used.
-    window.open('mailto:sales@orb.com?subject=Enterprise Plan Inquiry', '_blank')
+    // window.open('mailto:sales@orb.com?subject=Enterprise Plan Inquiry', '_blank'); // Old behavior
+    setIsContactSalesInfoOpen(true); // New behavior: open info dialog
   }
 
   return (
-    <div className="py-24 bg-gray-50">
+    <div className="py-24 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
@@ -78,20 +78,9 @@ export function PricingPlans({ instance }: PricingPlansProps) {
               popular={plan.popular}
               onSubscribe={() => handlePlanSelect(plan.plan_id)}
               onContactSales={handleContactSales} // Pass the general contact sales handler
+              cta={plan.cta} // Pass the cta from the plan object
             />
           ))}
-        </div>
-
-        <div className="mt-12 text-center">
-          <p className="text-gray-600">
-            Need a custom plan?{" "}
-            <button 
-              onClick={handleContactSales} // Re-use handleContactSales for this button too
-              className="text-blue-600 hover:text-blue-500 font-medium"
-            >
-              Contact our sales team →
-            </button>
-          </p>
         </div>
       </div>
 
@@ -106,6 +95,14 @@ export function PricingPlans({ instance }: PricingPlansProps) {
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
         instance={instance}
+      />
+
+      <AliasedEnterpriseContactDialog
+        isOpen={isContactSalesInfoOpen}
+        onClose={() => setIsContactSalesInfoOpen(false)}
+        title="Inquiry Received"
+        description="Thank you for your interest! A sales representative will be in touch with you soon."
+        buttonText="Got it!"
       />
     </div>
   )

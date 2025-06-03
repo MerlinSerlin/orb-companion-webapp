@@ -20,10 +20,10 @@ interface PlanCardProps {
   popular?: boolean
   onSubscribe: () => void
   onContactSales: () => void
+  cta: string
 }
 
 export function PlanCard({
-  plan_id,
   name,
   description,
   price,
@@ -32,9 +32,10 @@ export function PlanCard({
   popular = false,
   onSubscribe,
   onContactSales,
+  cta,
 }: PlanCardProps) {
   return (
-    <Card className={`relative ${popular ? 'border-blue-500 shadow-lg' : ''}`}>
+    <Card className={`relative flex flex-col min-h-[34rem] ${popular ? 'border-blue-500 shadow-lg' : ''}`}>
       {popular && (
         <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500">
           Most Popular
@@ -50,7 +51,7 @@ export function PlanCard({
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="flex-grow">
         <ul className="space-y-3">
           {features.map((feature, index) => (
             <li key={index} className="flex items-center">
@@ -62,20 +63,20 @@ export function PlanCard({
       </CardContent>
 
       <CardFooter>
-        {plan_id === 'nimbus_scale_enterprise' || plan_id === 'enterprise' ? (
+        {cta === "Contact Sales" ? (
           <Button 
             onClick={onContactSales}
             className="w-full"
             variant="outline"
           >
-            Contact Sales
+            {cta}
           </Button>
         ) : (
           <Button 
             onClick={onSubscribe}
             className="w-full"
           >
-            Subscribe
+            {cta}
           </Button>
         )}
       </CardFooter>

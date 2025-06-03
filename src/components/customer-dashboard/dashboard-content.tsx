@@ -128,10 +128,20 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
   }, [activeSubscription, companyConfig]);
 
   const features = useMemo(() => {
-    // 1. Always derive all dynamic features first.
+    // Prepare the entitlement overrides config map first
+    const entitlementOverridesConfig = new Map<string, { value?: string; perUnitDisplayName?: string }>();
+    currentPlanUIDetail?.displayedEntitlementsOverride?.forEach(override => {
+      entitlementOverridesConfig.set(override.name, { 
+        value: override.value, 
+        perUnitDisplayName: override.perUnitDisplayName 
+      });
+    });
+
+    // 1. Derive all dynamic features first, passing the overrides map
     const allDynamicFeatures: EntitlementFeature[] = deriveEntitlementsFromSubscription(
       activeSubscription,
-      companyConfig?.entitlementDisplayOrder
+      companyConfig?.entitlementDisplayOrder,
+      entitlementOverridesConfig // Pass the map here
     );
 
     // 2. Check if an override is defined and has items
