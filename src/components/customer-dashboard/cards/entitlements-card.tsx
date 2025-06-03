@@ -7,7 +7,7 @@ import type { Subscription } from "@/lib/types";
 import { getCurrentCompanyConfig } from "@/lib/plans"; 
 import { useCustomerStore } from "@/lib/store/customer-store";
 import { ORB_INSTANCES } from "@/lib/orb-config";
-import { getAddOnKeyByPriceId, getAddOnDisplayNameFromKey } from "@/lib/add-on-prices"; // Import new helpers
+import { getAddOnKeyByPriceId, getAddOnDisplayNameFromKey, getCurrentInstanceAddOns } from "@/lib/add-on-prices"; // Import new helpers
 
 interface EntitlementsCardProps {
   features: EntitlementFeature[];
@@ -15,6 +15,7 @@ interface EntitlementsCardProps {
   onOpenAdjustFixedPriceDialog?: (feature: EntitlementFeature) => void; // Changed from onOpenAddOnDialog
   onInitiateAddAddOn: (priceId: string, itemName: string) => void; 
   onRemoveScheduledTransition?: (priceIntervalId: string, effectiveDate: string) => void;
+  onOpenCancelFutureDialog?: (priceIntervalId: string, priceIntervalName: string, currentStartDate: string) => void;
   isLoading?: boolean;
 }
 
@@ -37,9 +38,55 @@ export function EntitlementsCard({
   onOpenAdjustFixedPriceDialog, // Use new prop
   onInitiateAddAddOn, 
   onRemoveScheduledTransition, 
+  onOpenCancelFutureDialog,
   isLoading
 }: EntitlementsCardProps) {
   
+  // Calculate all future intervals for features that can be cancelled
+  const futureIntervalsMap = React.useMemo(() => {
+    if (!activeSubscription?.price_intervals) return new Map();
+
+    const today = new Date().toISOString().split('T')[0];
+    const currentInstanceAddOns = getCurrentInstanceAddOns();
+    const allAddOnPriceIds = currentInstanceAddOns 
+      ? Object.values(currentInstanceAddOns).map(addOn => addOn.priceId)
+      : [];
+
+    const intervalsMap = new Map();
+    const priceIntervals = activeSubscription.price_intervals;
+
+    // Find future intervals for each feature
+    features.forEach(feature => {
+      if (!feature.priceId) return;
+
+      const futureInterval = priceIntervals.find(interval => {
+        const hasStart = interval.start_date && interval.start_date > today;
+        const notCancelled = !interval.end_date || interval.end_date !== interval.start_date;
+        const hasPrice = interval.price && interval.price.id;
+        const notPlatformFee = interval.price?.item?.name !== "Platform Fee";
+        const isAddOnPrice = interval.price?.id && allAddOnPriceIds.includes(interval.price.id);
+        const matchesPriceId = interval.price?.id === feature.priceId;
+        
+        return hasStart && notCancelled && hasPrice && notPlatformFee && isAddOnPrice && matchesPriceId;
+      });
+
+      if (futureInterval) {
+        intervalsMap.set(feature.priceId, futureInterval);
+      }
+    });
+
+    return intervalsMap;
+  }, [activeSubscription, features]);
+
+  // Helper function to find any interval (not just future add-ons) for a feature
+  const findIntervalForFeature = React.useCallback((priceId: string) => {
+    if (!activeSubscription?.price_intervals || !priceId) return null;
+    
+    return activeSubscription.price_intervals.find(interval => 
+      interval.price?.id === priceId
+    );
+  }, [activeSubscription]);
+
   if (isLoading) {
     return (
       <Card>
@@ -119,6 +166,10 @@ export function EntitlementsCard({
             const nextTransition = feature.allFutureTransitions && feature.allFutureTransitions.length > 0 
                                    ? feature.allFutureTransitions[0] 
                                    : null;
+
+            // Get the future interval for this feature from the pre-calculated map
+            const futureInterval = feature.priceId ? futureIntervalsMap.get(feature.priceId) : null;
+
             return (
               <li key={`${feature.priceId || feature.name}-${index}`} className="flex items-start justify-between border-b pb-3 pt-1 last:border-b-0 text-sm">
                 <div className="flex items-center pt-0.5">
@@ -163,20 +214,70 @@ export function EntitlementsCard({
                       {(feature.rawQuantity && feature.rawQuantity > 0) || (feature.rawQuantity === 0 && feature.statusText) ? 'Adjust' : 'Add'}
                     </Button>
                   )}
-                  {feature.statusText && (
-                    <div className="flex items-center text-xs text-blue-600 dark:text-blue-400 mt-1 space-x-1">
-                      <Info className="h-3 w-3 flex-shrink-0" />
-                      <span>{feature.statusText}</span>
-                      {onRemoveScheduledTransition && feature.priceIntervalId && nextTransition && (
-                        <Button 
-                          variant="ghost" size="icon" className="h-5 w-5 p-0 ml-1 text-destructive hover:text-destructive"
-                          onClick={() => { if (feature.priceIntervalId && nextTransition) { onRemoveScheduledTransition(feature.priceIntervalId, nextTransition.effective_date); }}}
-                          title="Remove this scheduled change"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
+                  {/* Only show status text for future dates, not today or past */}
+                  {feature.statusText && (() => {
+                    // For "Starts on..." status, use the actual start_date from any interval if available
+                    const statusMatch = feature.statusText.match(/Starts on (.+)/);
+                    if (statusMatch) {
+                      // Try to find the actual interval for this feature (including base plan features)
+                      const actualInterval = futureInterval || findIntervalForFeature(feature.priceId || '');
+                      
+                      if (actualInterval && actualInterval.start_date) {
+                        // Use the actual start_date from the interval (ISO format)
+                        const intervalStartDate = actualInterval.start_date.split('T')[0]; // Extract YYYY-MM-DD
+                        const today = new Date().toISOString().split('T')[0]; // Get today in YYYY-MM-DD format
+                        
+                        // Only show if the date is in the future
+                        if (intervalStartDate > today) {
+                          return (
+                            <div className="flex items-center text-xs text-blue-600 dark:text-blue-400 mt-1 space-x-1">
+                              <Info className="h-3 w-3 flex-shrink-0" />
+                              <span>{feature.statusText}</span>
+                              {onRemoveScheduledTransition && feature.priceIntervalId && nextTransition && (
+                                <Button 
+                                  variant="ghost" size="icon" className="h-5 w-5 p-0 ml-1 text-destructive hover:text-destructive"
+                                  onClick={() => { if (feature.priceIntervalId && nextTransition) { onRemoveScheduledTransition(feature.priceIntervalId, nextTransition.effective_date); }}}
+                                  title="Remove this scheduled change"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        }
+                        // If not in the future, don't render anything for "Starts on..." status
+                        return null;
+                      }
+                    }
+                    
+                    // Fallback: if no actual interval found or statusText doesn't match "Starts on..." pattern, show it anyway
+                    return (
+                      <div className="flex items-center text-xs text-blue-600 dark:text-blue-400 mt-1 space-x-1">
+                        <Info className="h-3 w-3 flex-shrink-0" />
+                        <span>{feature.statusText}</span>
+                        {onRemoveScheduledTransition && feature.priceIntervalId && nextTransition && (
+                          <Button 
+                            variant="ghost" size="icon" className="h-5 w-5 p-0 ml-1 text-destructive hover:text-destructive"
+                            onClick={() => { if (feature.priceIntervalId && nextTransition) { onRemoveScheduledTransition(feature.priceIntervalId, nextTransition.effective_date); }}}
+                            title="Remove this scheduled change"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  {/* Cancel Schedule button for future-scheduled intervals */}
+                  {futureInterval && onOpenCancelFutureDialog && (
+                    <Button
+                      variant="outline" size="sm" className="mt-1 h-6 px-2 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        const startDateOnly = futureInterval.start_date!.split('T')[0];
+                        onOpenCancelFutureDialog(futureInterval.id, feature.name, startDateOnly);
+                      }}
+                    >
+                      Cancel Schedule
+                    </Button>
                   )}
                 </div>
               </li>

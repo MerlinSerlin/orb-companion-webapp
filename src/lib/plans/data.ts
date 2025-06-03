@@ -4,6 +4,7 @@
 export interface EntitlementFeatureDisplay {
   name: string;
   value: string;
+  perUnitDisplayName?: string;
 }
 
 export interface PlanUIDetail {
@@ -64,16 +65,14 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         features: [
           { name: "Bandwidth", value: "500 GB" },
           { name: "Edge Requests", value: "5M requests" },
-          { name: "Storage", value: "50 GB" },
           { name: "Builds", value: "Unlimited" },
           { name: "Build Minutes", value: "1,000 minutes" },
         ],
         displayedEntitlementsOverride: [
-          { name: "Bandwidth", value: "500 GB" },
-          { name: "Edge Requests", value: "5M requests" },
-          { name: "Storage", value: "50 GB" },
-          { name: "Builds", value: "Unlimited" },
-          { name: "Build Minutes", value: "1,000 minutes" },
+          { name: "Nimbus Scale Bandwidth GB", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "gb" },
+          { name: "Nimbus Scale Edge Requests", value: "5M requests", perUnitDisplayName: "edge request" },
+          { name: "Nimbus Scale Builds", value: "Unlimited" },
+          { name: "Nimbus Scale Build Minutes", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "build minute" },
           { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" },
           { name: "Observability", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
@@ -85,7 +84,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         plan_id: "nimbus_scale_enterprise",
         name: "Enterprise",
         description: "For large-scale applications with high demands",
-        price: "",
+        price: "Custom",
         billingInterval: null,
         features: [
           { name: "SLAs", value: "24/7/365" },
@@ -101,11 +100,11 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
     ],
     // Order of features to display in the UI
     entitlementDisplayOrder: [
-      "Bandwidth GB",
-      "Build Minutes",
-      "Builds",
-      "Edge Requests",
-      "Storage GB",
+      "Nimbus Scale Bandwidth GB",
+      "Nimbus Scale Build Minutes",
+      "Nimbus Scale Builds",
+      "Nimbus Scale Edge Requests",
+      "Nimbus Scale Storage GB",
       "Observability",
       "Concurrent Builds"
     ],
@@ -115,7 +114,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
     logo: "/brain.svg",
     uiPlans: [
       {
-        plan_id: "8LF8PBGEyVgyTSiC",
+        plan_id: "HoDSRU6V3det4CbX",
         name: "Pay As You Go",
         description: "For Solo Builders",
         price: "$10 To Get Started",
@@ -123,21 +122,21 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         features: [
           { name: "Access to Standard Models", value: "Included" },
           { name: "On Demand Usage", value: "Available" },
+          { name: "1000 Token Credits", value: "Included" },
           { name: "Premium Models Add-On", value: "Available" },
         ],
         displayedEntitlementsOverride: [
           { name: "1000 Token Credits", value: "Included" },
           { name: "Access to Standard Models", value: "Included" },
-          { name: "On Demand Usage", value: "Included" },
-          { name: "Standard Requests", value: ".05 Token Credits per Token Consumed" },
-          { name: "Premium Requests", value: "%%USE_DYNAMIC_VALUE%%" }
+          { name: "Standard Models", value: ".05 Token Credits per Token Consumed" },
+          { name: "Premium Models", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
         allowedAddOnPriceIds: ['TEE8AfhNoSybQ8Nj'],
         cta: "Subscribe",
         popular: false,
       },
       {
-        plan_id: "2f3wsPYBCYcALtkJ",
+        plan_id: "LKsipzW4a3pZ2csm",
         name: "Team",
         description: "For Teams of Builders",
         price: "$79",
@@ -152,16 +151,31 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         ],
         displayedEntitlementsOverride: [
           { name: "10K Token Credits/Month", value: "Included" },
-          { name: "Premium Requests", value: ".25 Token Credits per Token Consumed" },
-          { name: "Standard Requests", value: ".05 Token Credits per Token Consumed" },
+          { name: "Premium Models", value: ".25 Token Credits per Token Consumed" },
+          { name: "Standard Models", value: ".05 Token Credits per Token Consumed" },
           { name: "Team Members", value: "%%USE_DYNAMIC_VALUE%%" },
         ],
         allowedAddOnPriceIds: [], // No add-ons for this plan yet
         cta: "Subscribe",
         popular: false,
       },
+      {
+        plan_id: "neural_prime_enterprise",
+        name: "Enterprise",
+        description: "For large-scale applications with high demands",
+        price: "Custom",
+        billingInterval: null,
+        features: [
+          { name: "24/7/365 Support", value: "Included" },
+          { name: "SLAs", value: "Included" },
+          { name: "Custom Pricing", value: "Available" },
+          { name: "RBAC and SSO", value: "Available" },
+        ],
+        cta: "Contact Sales",
+        popular: false,
+      },
     ],
-    entitlementDisplayOrder: [ /* ... */ ],
+    entitlementDisplayOrder: [ /* ... */ ],  
   }
 };
 

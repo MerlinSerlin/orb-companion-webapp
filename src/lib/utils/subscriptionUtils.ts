@@ -1,6 +1,6 @@
 import { formatDate, formatNumber, formatCurrencyValue } from '@/lib/utils/formatters';
 import type { Subscription, PriceInterval, FixedFeeQuantityTransition } from '@/lib/types';
-import { getAddOnKeyByPriceId, getAddOnDisplayNameFromKey } from '@/lib/add-on-prices';
+import { getAddOnKeyByPriceId, getAddOnDisplayNameFromKey, getAddOnConfigByKey } from '@/lib/add-on-prices/pricing';
 
 // Define the structure for individual tier details
 export interface TierDetail {
@@ -36,9 +36,15 @@ interface ExtendedPriceInterval extends PriceInterval {
   fixed_fee_quantity_transitions?: FixedFeeQuantityTransition[] | null; 
 }
 
+export interface EntitlementOverrideConfig {
+  value?: string; // Existing dynamic value placeholder or static text
+  perUnitDisplayName?: string;
+}
+
 export function deriveEntitlementsFromSubscription(
   subscription: Subscription | null, 
-  entitlementDisplayOrder: string[] = []
+  entitlementDisplayOrder: string[] = [],
+  entitlementOverridesConfig: Map<string, EntitlementOverrideConfig> = new Map() // New parameter
 ): EntitlementFeature[] {
   if (!subscription?.price_intervals) {
     return [];
@@ -59,10 +65,11 @@ export function deriveEntitlementsFromSubscription(
 
     // Get the add-on key and desired display name
     const addOnKey = getAddOnKeyByPriceId(price.id);
-    const finalDisplayName = addOnKey ? getAddOnDisplayNameFromKey(addOnKey) : price.item.name.replace(/^Nimbus Scale\s+/, ''); // Fallback if not a mapped add-on
+    const finalDisplayName = addOnKey ? getAddOnDisplayNameFromKey(addOnKey) : price.item.name; // Removed .replace() for Nimbus Scale prefix
+    const addOnConfig = addOnKey ? getAddOnConfigByKey(addOnKey) : null; // Get the full add-on config
 
     // Use the original item name for unit heuristic
-    const originalItemNameForUnitHeuristic = price.item.name.replace(/^Nimbus Scale\s+/, '');
+    const originalItemNameForUnitHeuristic = price.item.name; // Removed .replace() for Nimbus Scale prefix
 
     let baseValue = "Included"; // Default baseValue
     let overageInfo: string | undefined = undefined;
@@ -111,7 +118,14 @@ export function deriveEntitlementsFromSubscription(
     } else if (price.price_type === 'usage_price') {
       // const itemUnitName = price.item?.name || 'events'; // This specific variable might not be needed here if handled by model_type
 
-      if (price.model_type === 'tiered_package' && price.tiered_package_config?.tiers && price.tiered_package_config.tiers.length > 0) {
+      if (addOnConfig?.activeDisplayValue) {
+        baseValue = addOnConfig.activeDisplayValue;
+        overageInfo = undefined; // Typically, activeDisplayValue from config is comprehensive
+        // Still capture rawOveragePrice if the price is unit-based, as it might be used by dialogs/other UI
+        if (price.model_type === 'unit' && price.unit_config?.unit_amount) {
+          rawOveragePrice = parseFloat(price.unit_config.unit_amount);
+        }
+      } else if (price.model_type === 'tiered_package' && price.tiered_package_config?.tiers && price.tiered_package_config.tiers.length > 0) {
         const tiers = price.tiered_package_config.tiers;
         const firstTier = tiers[0];
 
@@ -154,21 +168,16 @@ export function deriveEntitlementsFromSubscription(
             baseValue = "Usage-based (package)";
             overageInfo = undefined;
         }
-      } else if (addOnKey === 'PREMIUM_REQUESTS' && price.model_type === 'unit') {
-        // Specific handling for Premium Requests display text
-        baseValue = ".25 Token Credits per Token Consumed";
-        overageInfo = undefined; // Ensure no conflicting overage info
-        // We can also set rawOveragePrice if needed for other parts of the UI, e.g., dialogs
-        if (price.unit_config?.unit_amount) {
-          rawOveragePrice = parseFloat(price.unit_config.unit_amount); 
-        }
       } else if (price.model_type === 'tiered' && price.tiered_config?.tiers) {
         const tiers = price.tiered_config.tiers;
         
         // Always show detailed tier information for tiered pricing
         if (tiers.length > 0) {
           tierDetails = []; // Initialize tierDetails array
-          const perItemNameForTier = price.item?.name || 'unit'; // The item it's "per"
+          
+          // Determine the per-item name for the tier, using override if available
+          const overrideConfig = entitlementOverridesConfig.get(finalDisplayName);
+          const perItemNameForTier = overrideConfig?.perUnitDisplayName || price.item?.name || 'unit';
           
           tiers.forEach((tier) => {
             const unitAmount = tier.unit_amount ? parseFloat(tier.unit_amount) : 0;

@@ -283,6 +283,86 @@ export async function addPriceInterval(
   }
 }
 
+export interface PriceIntervalScheduleEdit {
+  price_interval_id: string;
+  start_date?: string | null; 
+  end_date?: string | null;   
+}
+
+export async function editPriceIntervalSchedule(
+  subscriptionId: string,
+  edits: PriceIntervalScheduleEdit[],
+  instance: OrbInstance = 'cloud-infra'
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[Action] Editing price interval schedule for subscription ${subscriptionId} in instance: ${instance}`);
+  console.log("[Action] Received Schedule Edits:", JSON.stringify(edits, null, 2));
+
+  const instanceConfig = ORB_INSTANCES[instance];
+  const apiKey = instanceConfig.apiKey;
+  if (!apiKey) {
+    console.error(`[Action] Orb API key is not configured for instance: ${instance}.`);
+    return { success: false, error: 'Server configuration error.' };
+  }
+
+  if (!subscriptionId) {
+    return { success: false, error: 'Subscription ID is required.' };
+  }
+  if (!edits || edits.length === 0) {
+    return { success: false, error: 'No schedule edits provided.' };
+  }
+
+  for (const edit of edits) {
+    if (!edit.price_interval_id) {
+      return { success: false, error: 'Each schedule edit must include a price_interval_id.' };
+    }
+    if (typeof edit.start_date === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(edit.start_date)) {
+      return { success: false, error: `Invalid start_date format: ${edit.start_date}. Use YYYY-MM-DD.` };
+    }
+    if (typeof edit.end_date === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(edit.end_date)) {
+      return { success: false, error: `Invalid end_date format: ${edit.end_date}. Use YYYY-MM-DD.` };
+    }
+  }
+
+  const payload = {
+    edit: edits.map(edit => {
+      const orbEditPayload: {
+        price_interval_id: string;
+        start_date?: string;
+        end_date?: string;
+      } = { price_interval_id: edit.price_interval_id };
+
+      // Only include dates if they are strings (not null or undefined)
+      // Orb API interprets missing fields as "no change"
+      if (typeof edit.start_date === 'string') {
+        orbEditPayload.start_date = edit.start_date;
+      }
+      if (typeof edit.end_date === 'string') {
+        orbEditPayload.end_date = edit.end_date;
+      }
+      return orbEditPayload;
+    }),
+  };
+
+  console.log("[Action] Sending Schedule Payload to Orb:", JSON.stringify(payload, null, 2));
+
+  try {
+    const instanceOrbClient = createOrbClient(instance);
+    await instanceOrbClient.subscriptions.priceIntervals(subscriptionId, payload);
+
+    console.log(`[Action] Successfully edited price interval schedules for subscription ${subscriptionId}.`);
+    return { success: true };
+  } catch (error) {
+    console.error("[Action] Error editing price interval schedules:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    // @ts-expect-error - error response type is unknown but may contain response.data from Orb API
+    if (error && error.response && error.response.data) {
+        // @ts-expect-error - accessing response.data which exists on axios errors but not typed
+        console.error("[Action] Orb Error Details:", JSON.stringify(error.response.data, null, 2));
+    }
+    return { success: false, error: errorMessage };
+  }
+}
+
 export async function getPriceDetails(
   priceId: string,
   instance: OrbInstance = 'cloud-infra'
