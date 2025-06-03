@@ -65,11 +65,11 @@ export function deriveEntitlementsFromSubscription(
 
     // Get the add-on key and desired display name
     const addOnKey = getAddOnKeyByPriceId(price.id);
-    const finalDisplayName = addOnKey ? getAddOnDisplayNameFromKey(addOnKey) : price.item.name.replace(/^Nimbus Scale\s+/, ''); // Fallback if not a mapped add-on
+    const finalDisplayName = addOnKey ? getAddOnDisplayNameFromKey(addOnKey) : price.item.name; // Removed .replace() for Nimbus Scale prefix
     const addOnConfig = addOnKey ? getAddOnConfigByKey(addOnKey) : null; // Get the full add-on config
 
     // Use the original item name for unit heuristic
-    const originalItemNameForUnitHeuristic = price.item.name.replace(/^Nimbus Scale\s+/, '');
+    const originalItemNameForUnitHeuristic = price.item.name; // Removed .replace() for Nimbus Scale prefix
 
     let baseValue = "Included"; // Default baseValue
     let overageInfo: string | undefined = undefined;
@@ -177,7 +177,7 @@ export function deriveEntitlementsFromSubscription(
           
           // Determine the per-item name for the tier, using override if available
           const overrideConfig = entitlementOverridesConfig.get(finalDisplayName);
-          const perItemNameForTier = overrideConfig?.perUnitDisplayName || price.item?.name?.replace(/^Nimbus Scale\s+/, '') || 'unit';
+          const perItemNameForTier = overrideConfig?.perUnitDisplayName || price.item?.name || 'unit';
           
           tiers.forEach((tier) => {
             const unitAmount = tier.unit_amount ? parseFloat(tier.unit_amount) : 0;

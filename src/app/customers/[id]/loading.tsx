@@ -12,14 +12,13 @@ export default function Loading() {
           {/* Title Skeleton - Adjust height/width if needed */} 
           <Skeleton className="h-8 w-3/4 mb-2" /> 
         </div>
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="subscriptions" className="space-y-6">
           <TabsList>
              {/* Tab Trigger Skeletons - Check height/width/spacing */} 
-             <Skeleton className="h-10 w-24 mr-2 rounded-md" />
-             <Skeleton className="h-10 w-24 mr-2 rounded-md" />
-             <Skeleton className="h-10 w-24 rounded-md" />
+             <Skeleton className="h-10 w-32 mr-2 rounded-md" />
+             <Skeleton className="h-10 w-36 rounded-md" />
           </TabsList>
-          <TabsContent value="overview" className="mt-6"> {/* Match default TabsContent margin */} 
+          <TabsContent value="subscriptions" className="mt-6"> {/* Match default TabsContent margin */} 
              <div className="grid gap-6 md:grid-cols-2">
                {/* Subscription Details Card Skeleton */}
                <Card>

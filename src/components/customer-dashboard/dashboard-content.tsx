@@ -5,10 +5,9 @@ import { useRouter } from "next/navigation"
 import { useCustomerStore } from "@/lib/store/customer-store"
 import { Header } from "@/components/ui/header"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { AlertCircle } from "lucide-react"
 import type { Subscription } from "@/lib/types";
 import type { OrbInstance } from "@/lib/orb-config";
@@ -16,6 +15,7 @@ import { ORB_INSTANCES } from "@/lib/orb-config";
 import { getCurrentCompanyConfig } from "@/lib/plans";
 import { ManageFixedPriceItemDialog } from "./dialogs/manage-fixed-price-item-dialog";
 import { AddNewFloatingPriceDialog } from "./dialogs/add-new-floating-price-dialog";
+import { CancelFuturePriceIntervalDialog } from "@/components/dialogs/cancel-future-price-interval-dialog";
 import { useQueryClient } from '@tanstack/react-query'
 import { deriveEntitlementsFromSubscription, type EntitlementFeature } from "@/lib/utils/subscriptionUtils";
 import { useCustomerSubscriptions, useCustomerDetails } from "@/hooks/useCustomerData";
@@ -40,6 +40,12 @@ interface CustomerDashboardContentProps {
 interface AddOnInitiateData {
   priceId: string;
   itemName: string;
+}
+
+interface FutureScheduledIntervalData {
+  priceIntervalId: string;
+  priceIntervalName: string;
+  currentStartDate: string;
 }
 
 export function CustomerDashboardContent({ customerId: customerIdProp, instance: instanceProp }: CustomerDashboardContentProps) {
@@ -67,6 +73,10 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
   const [featureToAdjust, setFeatureToAdjust] = useState<EntitlementFeature | null>(null);
   
   const [addOnToInitiate, setAddOnToInitiate] = useState<AddOnInitiateData | null>(null);
+
+  // State for the cancel future price interval dialog
+  const [isCancelFutureDialogOpen, setIsCancelFutureDialogOpen] = useState(false);
+  const [futureIntervalToCancel, setFutureIntervalToCancel] = useState<FutureScheduledIntervalData | null>(null);
 
   const { 
     data: customerDetails, 
@@ -234,12 +244,20 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
       toast.error("Cannot Adjust Feature", { description: "This feature cannot be adjusted or is missing necessary information." });
     }
   };
+
+  const handleOpenCancelFutureDialog = (priceIntervalId: string, priceIntervalName: string, currentStartDate: string) => {
+    setFutureIntervalToCancel({ priceIntervalId, priceIntervalName, currentStartDate });
+    setIsCancelFutureDialogOpen(true);
+  };
   
   const handleDialogSuccessAndClose = () => {
       refreshSubscriptionData();
       setIsAdjustFixedPriceDialogOpen(false); 
       setFeatureToAdjust(null); // Clear the feature being adjusted
       setAddOnToInitiate(null);
+      // Clear cancel dialog state
+      setIsCancelFutureDialogOpen(false);
+      setFutureIntervalToCancel(null);
   };
 
   const showSkeletonView = !isClientMounted || !stableCustomerId || !currentInstance || !companyConfig || !isReadyToFetch || customerDetailsLoading || (isReadyToFetch && subscriptionsLoading);
@@ -249,13 +267,12 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
       <>
         <Header />
         <main className="container mx-auto px-4 py-8">
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs defaultValue="subscriptions" className="space-y-6">
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="usage">Usage</TabsTrigger>
-              <TabsTrigger value="billing">Billing</TabsTrigger>
+              <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
+              <TabsTrigger value="customer-portal">Customer Portal</TabsTrigger>
             </TabsList>
-            <TabsContent value="overview">
+            <TabsContent value="subscriptions">
               <div className="grid gap-6 md:grid-cols-2">
                 <SubscriptionDetailsCard 
                   activeSubscription={null} 
@@ -267,23 +284,13 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
                   onOpenAdjustFixedPriceDialog={handleOpenAdjustFixedPriceDialog}
                   onInitiateAddAddOn={handleInitiateAddAddOn}
                   onRemoveScheduledTransition={handleRemoveScheduledTransition}
+                  onOpenCancelFutureDialog={handleOpenCancelFutureDialog}
                   isLoading={true}
                 />
               </div>
             </TabsContent>
-            <TabsContent value="usage">
+            <TabsContent value="customer-portal">
               <CustomerPortalCard portalUrl={undefined} />
-            </TabsContent>
-            <TabsContent value="billing">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Billing History</CardTitle>
-                  <CardDescription>View your past and upcoming invoices</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table><TableCaption>A list of your recent invoices.</TableCaption><TableHeader><TableRow><TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody><TableRow><TableCell colSpan={5} className="text-center text-muted-foreground"><div className="h-4 bg-muted rounded animate-pulse w-32 mx-auto"></div></TableCell></TableRow></TableBody></Table>
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </main>
@@ -315,13 +322,12 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
     <>
       <Header />
       <main className="container mx-auto px-4 py-8">
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs defaultValue="subscriptions" className="space-y-6">
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="usage">Usage</TabsTrigger>
-              <TabsTrigger value="billing">Billing</TabsTrigger>
+              <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
+              <TabsTrigger value="customer-portal">Customer Portal</TabsTrigger>
             </TabsList>
-            <TabsContent value="overview">
+            <TabsContent value="subscriptions">
               <div className="grid gap-6 md:grid-cols-2">
               <SubscriptionDetailsCard activeSubscription={activeSubscription} customerId={stableCustomerId!} />
                 <EntitlementsCard 
@@ -330,14 +336,12 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
                   onOpenAdjustFixedPriceDialog={handleOpenAdjustFixedPriceDialog}
                   onInitiateAddAddOn={handleInitiateAddAddOn}
                   onRemoveScheduledTransition={handleRemoveScheduledTransition}
+                  onOpenCancelFutureDialog={handleOpenCancelFutureDialog}
                 />
               </div>
             </TabsContent>
-            <TabsContent value="usage">
+            <TabsContent value="customer-portal">
               <CustomerPortalCard portalUrl={customerDetails?.portal_url} />
-            </TabsContent>
-            <TabsContent value="billing">
-            <Card><CardHeader><CardTitle>Billing History</CardTitle><CardDescription>View your past and upcoming invoices</CardDescription></CardHeader><CardContent><Table><TableCaption>A list of your recent invoices.</TableCaption><TableHeader><TableRow><TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody><TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Billing history coming soon.</TableCell></TableRow></TableBody></Table></CardContent></Card>
             </TabsContent>
           </Tabs>
       </main>
@@ -380,6 +384,23 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
           subscriptionId={activeSubscription.id}
           onSuccess={handleDialogSuccessAndClose}
           currentInstance={currentInstance!}
+        />
+      )}
+
+      {/* Cancel Future Price Interval Dialog */}
+      {activeSubscription && currentInstance && futureIntervalToCancel && (
+        <CancelFuturePriceIntervalDialog
+          isOpen={isCancelFutureDialogOpen}
+          onClose={() => {
+            setIsCancelFutureDialogOpen(false);
+            setFutureIntervalToCancel(null);
+          }}
+          subscriptionId={activeSubscription.id}
+          priceIntervalId={futureIntervalToCancel.priceIntervalId}
+          priceIntervalName={futureIntervalToCancel.priceIntervalName}
+          currentStartDate={futureIntervalToCancel.currentStartDate}
+          currentInstance={currentInstance}
+          onSuccess={handleDialogSuccessAndClose}
         />
       )}
     </>

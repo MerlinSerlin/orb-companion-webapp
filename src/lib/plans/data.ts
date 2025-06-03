@@ -69,10 +69,10 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Build Minutes", value: "1,000 minutes" },
         ],
         displayedEntitlementsOverride: [
-          { name: "Bandwidth GB", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "gb" },
-          { name: "Edge Requests", value: "5M requests", perUnitDisplayName: "edge request" },
-          { name: "Builds", value: "Unlimited" },
-          { name: "Build Minutes", value: "1,000 minutes", perUnitDisplayName: "build minute" },
+          { name: "Nimbus Scale Bandwidth GB", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "gb" },
+          { name: "Nimbus Scale Edge Requests", value: "5M requests", perUnitDisplayName: "edge request" },
+          { name: "Nimbus Scale Builds", value: "Unlimited" },
+          { name: "Nimbus Scale Build Minutes", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "build minute" },
           { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" },
           { name: "Observability", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
@@ -100,11 +100,11 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
     ],
     // Order of features to display in the UI
     entitlementDisplayOrder: [
-      "Bandwidth GB",
-      "Build Minutes",
-      "Builds",
-      "Edge Requests",
-      "Storage GB",
+      "Nimbus Scale Bandwidth GB",
+      "Nimbus Scale Build Minutes",
+      "Nimbus Scale Builds",
+      "Nimbus Scale Edge Requests",
+      "Nimbus Scale Storage GB",
       "Observability",
       "Concurrent Builds"
     ],
@@ -128,9 +128,8 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         displayedEntitlementsOverride: [
           { name: "1000 Token Credits", value: "Included" },
           { name: "Access to Standard Models", value: "Included" },
-          { name: "On Demand Usage", value: "Included" },
           { name: "Standard Models", value: ".05 Token Credits per Token Consumed" },
-          { name: "Premium Requests", value: "%%USE_DYNAMIC_VALUE%%" }
+          { name: "Premium Models", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
         allowedAddOnPriceIds: ['TEE8AfhNoSybQ8Nj'],
         cta: "Subscribe",
