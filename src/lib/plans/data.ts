@@ -121,7 +121,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         billingInterval: null,
         features: [
           { name: "Access to Standard Models", value: "Included" },
-          { name: "On Demand Usage", value: "Available" },
+          { name: "On Demand Usage", value: "Included" },
           { name: "1000 Token Credits", value: "Included" },
           { name: "Premium Models Add-On", value: "Available" },
         ],
