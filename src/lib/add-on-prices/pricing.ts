@@ -150,9 +150,6 @@ export const getAddOnDisplayNameFromKey = (addOnKey: string): string => {
     .join(' ');
 };
 
-// For backwards compatibility or direct access if needed
-export const getObservabilityPriceId = () => getAddOnPriceId('OBSERVABILITY'); // Name updated for clarity
-
 // Constants for well-known price IDs can still be useful
 export const OBSERVABILITY_PRICE_ID = ADD_ON_PRICE_MAPPINGS.Cloud_Infra.OBSERVABILITY.priceId;
 export const PREMIUM_MODELS_PRICE_ID = ADD_ON_PRICE_MAPPINGS.AI_Agents.PREMIUM_MODELS.priceId;
