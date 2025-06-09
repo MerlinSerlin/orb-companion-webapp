@@ -81,7 +81,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         popular: true,
       },
       {
-        plan_id: "nimbus_scale_enterprise",
+        plan_id: "bhmJBqKathJDQapv",
         name: "Enterprise",
         description: "For large-scale applications with high demands",
         price: "Custom",
@@ -92,6 +92,14 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Multi-Region Deployments", value: "Available" },
           { name: "Faster Builds", value: "Enabled" },
           { name: "RBAC and SSO", value: "Available" },
+        ],
+        displayedEntitlementsOverride: [
+          { name: "Nimbus Scale Bandwidth GB", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "gb" },
+          { name: "Nimbus Scale Edge Requests", value: "5M requests", perUnitDisplayName: "edge request" },
+          { name: "Nimbus Scale Builds", value: "Unlimited" },
+          { name: "Nimbus Scale Build Minutes", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "build minute" },
+          { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" },
+          { name: "Observability", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
         allowedAddOnPriceIds: ["RmP4RPnRjGpTE29V"], // Observability price ID
         cta: "Contact Sales",
