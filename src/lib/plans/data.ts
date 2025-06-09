@@ -7,6 +7,11 @@ export interface EntitlementFeatureDisplay {
   perUnitDisplayName?: string;
 }
 
+// New interface for minimum quantity constraints
+export interface EntitlementMinimums {
+  [entitlementName: string]: number;
+}
+
 export interface PlanUIDetail {
   plan_id: string;
   name: string;
@@ -16,8 +21,8 @@ export interface PlanUIDetail {
   features: EntitlementFeatureDisplay[];
   displayedEntitlementsOverride?: EntitlementFeatureDisplay[];
   allowedAddOnPriceIds?: string[];
+  entitlementMinimums?: EntitlementMinimums; // New field for minimum quantities
   cta: string;
-  popular: boolean;
 }
 
 export interface CompanyPlanData {
@@ -54,7 +59,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         ],
         allowedAddOnPriceIds: [],
         cta: "Select Starter",
-        popular: false,
       },
       {
         plan_id: "bvVSqtKcsErM9Rxi",
@@ -77,11 +81,13 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Observability", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
         allowedAddOnPriceIds: ["RmP4RPnRjGpTE29V"], // Observability price ID
+        entitlementMinimums: {
+          "Concurrent Builds": 1, // Pro plan base level
+        },
         cta: "Select Pro",
-        popular: true,
       },
       {
-        plan_id: "nimbus_scale_enterprise",
+        plan_id: "NRjuWfYe7QLVfiXk",
         name: "Enterprise",
         description: "For large-scale applications with high demands",
         price: "Custom",
@@ -93,9 +99,19 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Faster Builds", value: "Enabled" },
           { name: "RBAC and SSO", value: "Available" },
         ],
+        displayedEntitlementsOverride: [
+          { name: "Nimbus Scale Bandwidth GB", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "gb" },
+          { name: "Nimbus Scale Edge Requests", value: "5M requests", perUnitDisplayName: "edge request" },
+          { name: "Nimbus Scale Builds", value: "Unlimited" },
+          { name: "Nimbus Scale Build Minutes", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "build minute" },
+          { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" },
+          { name: "Observability", value: "%%USE_DYNAMIC_VALUE%%" }
+        ],
         allowedAddOnPriceIds: ["RmP4RPnRjGpTE29V"], // Observability price ID
+        entitlementMinimums: {
+          "Concurrent Builds": 100, // Enterprise plan base level
+        },
         cta: "Contact Sales",
-        popular: false,
       },
     ],
     // Order of features to display in the UI
@@ -133,7 +149,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         ],
         allowedAddOnPriceIds: ['TEE8AfhNoSybQ8Nj'],
         cta: "Subscribe",
-        popular: false,
       },
       {
         plan_id: "LKsipzW4a3pZ2csm",
@@ -157,7 +172,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         ],
         allowedAddOnPriceIds: [], // No add-ons for this plan yet
         cta: "Subscribe",
-        popular: false,
       },
       {
         plan_id: "neural_prime_enterprise",
@@ -172,7 +186,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "RBAC and SSO", value: "Available" },
         ],
         cta: "Contact Sales",
-        popular: false,
       },
     ],
     entitlementDisplayOrder: [ /* ... */ ],  
@@ -191,4 +204,32 @@ export const getCurrentCompanyConfig = (companyKey: string): CompanyPlanData => 
     throw new Error(`Invalid company key: "${companyKey}". This indicates a bug in the application configuration.`);
   }
   return config;
+};
+
+// --- Helper Function to Get Minimum Quantity for an Entitlement ---
+export const getEntitlementMinimum = (
+  companyKey: string, 
+  planId: string, 
+  entitlementName: string
+): number => {
+  try {
+    const companyConfig = getCurrentCompanyConfig(companyKey);
+    const plan = companyConfig.uiPlans.find(p => p.plan_id === planId);
+    
+    if (!plan) {
+      console.warn(`Plan with ID "${planId}" not found for company "${companyKey}". Defaulting to minimum of 1.`);
+      return 1;
+    }
+    
+    const minimum = plan.entitlementMinimums?.[entitlementName];
+    if (minimum !== undefined) {
+      return minimum;
+    }
+    
+    // Default minimum for fixed price items that don't have explicit minimums
+    return 1;
+  } catch (error) {
+    console.warn(`Error getting minimum for entitlement "${entitlementName}":`, error);
+    return 1; // Safe fallback
+  }
 };

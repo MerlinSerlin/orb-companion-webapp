@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Check } from "lucide-react"
 
 interface PlanFeature {
@@ -17,7 +16,6 @@ interface PlanCardProps {
   price: string
   billingInterval?: 'month' | 'year' | null
   features: PlanFeature[]
-  popular?: boolean
   onSubscribe: () => void
   onContactSales: () => void
   cta: string
@@ -29,19 +27,12 @@ export function PlanCard({
   price,
   billingInterval,
   features,
-  popular = false,
   onSubscribe,
   onContactSales,
   cta,
 }: PlanCardProps) {
   return (
-    <Card className={`relative flex flex-col min-h-[34rem] ${popular ? 'border-blue-500 shadow-lg' : ''}`}>
-      {popular && (
-        <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500">
-          Most Popular
-        </Badge>
-      )}
-
+    <Card className="relative flex flex-col min-h-[34rem]">
       <CardHeader>
         <CardTitle className="text-xl">{name}</CardTitle>
         <CardDescription>{description}</CardDescription>

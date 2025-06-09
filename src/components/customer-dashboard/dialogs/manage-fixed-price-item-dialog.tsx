@@ -20,6 +20,7 @@ import { ApiPreviewDialog } from "../../dialogs/api-preview-dialog";
 import type { Subscription, FixedFeeQuantityTransition } from "@/lib/types";
 import type { OrbInstance } from "@/lib/orb-config";
 import { formatNumber, formatDate } from "@/lib/utils/formatters";
+import { getEntitlementMinimum } from "@/lib/plans/data"; // Import the helper function
 
 // Uncommented JsonValue type
 type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
@@ -42,6 +43,8 @@ interface ManageFixedPriceItemDialogProps {
   dialogDescription?: string;
   instance: OrbInstance;
   priceAppliesToFirstUnit?: boolean; // New prop
+  companyKey?: string; // New prop for company identification
+  planId?: string; // New prop for plan identification
 }
 
 export function ManageFixedPriceItemDialog({
@@ -59,13 +62,24 @@ export function ManageFixedPriceItemDialog({
   dialogTitle,
   dialogDescription,
   instance,
-  priceAppliesToFirstUnit = false
+  priceAppliesToFirstUnit = false,
+  companyKey,
+  planId
 }: ManageFixedPriceItemDialogProps) {
 
   const [newQuantityState, setNewQuantityState] = React.useState<number>(currentQuantity);
   const [effectiveDateState, setEffectiveDateState] = React.useState<Date | null>(null);
   const [isScheduling, setIsScheduling] = React.useState<boolean>(false);
   const [isRemoving, setIsRemoving] = React.useState<string | null>(null); // Stores effective_date of item being removed
+
+  // Calculate minimum quantity based on plan configuration
+  const minimumQuantity = React.useMemo(() => {
+    if (companyKey && planId) {
+      return getEntitlementMinimum(companyKey, planId, itemName);
+    }
+    // Fallback to existing logic
+    return priceAppliesToFirstUnit ? 0 : 1;
+  }, [companyKey, planId, itemName, priceAppliesToFirstUnit]);
 
   // --- Helpers ---
   const getContextData = React.useCallback(() => {
@@ -126,7 +140,7 @@ export function ManageFixedPriceItemDialog({
   const newCostDisplay = calculateCost(newQuantityState, priceAppliesToFirstUnit, addOnPrice);
   const costChangeDisplay = newCostDisplay - currentCostDisplay;
 
-  const handleDecrement = () => setNewQuantityState((prev: number) => Math.max(priceAppliesToFirstUnit ? 0 : 1, prev - 1)); // Allow 0 if price applies to first unit
+  const handleDecrement = () => setNewQuantityState((prev: number) => Math.max(minimumQuantity, prev - 1)); // Use dynamic minimumQuantity
   const handleIncrement = () => setNewQuantityState((prev: number) => prev + 1);
 
   const handleScheduleConfirm = async () => {
@@ -270,25 +284,25 @@ export function ManageFixedPriceItemDialog({
               </div>
 
               <div className="flex justify-between items-center text-sm">
-                <Label>Price per Additional Unit</Label>
+                <Label>{priceAppliesToFirstUnit ? 'Price per Unit' : 'Price per Additional Unit'}</Label>
                 <span className="font-medium">
-                  {formatCurrency(addOnPrice)} (after first)
+                  {formatCurrency(addOnPrice)} {priceAppliesToFirstUnit ? '' : '(after first)'}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <Label htmlFor="newQuantityInput" className="text-sm">New Total Quantity</Label>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="icon" onClick={handleDecrement} disabled={newQuantityState <= 1 || isScheduling} className="h-8 w-8">
+                  <Button variant="outline" size="icon" onClick={handleDecrement} disabled={newQuantityState <= minimumQuantity || isScheduling} className="h-8 w-8">
                     <Minus className="h-4 w-4" />
                   </Button>
                   <Input
                     id="newQuantityInput"
                     type="number"
                     value={newQuantityState}
-                    onChange={(e) => setNewQuantityState(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    onChange={(e) => setNewQuantityState(Math.max(minimumQuantity, parseInt(e.target.value, 10) || minimumQuantity))}
                     className="w-12 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    min="1"
+                    min={minimumQuantity.toString()}
                     disabled={isScheduling}
                   />
                   <Button variant="outline" size="icon" onClick={handleIncrement} disabled={isScheduling} className="h-8 w-8">
@@ -305,17 +319,10 @@ export function ManageFixedPriceItemDialog({
               </div>
 
               <div className="flex justify-between items-center text-sm">
-                <Label>Cost Change / month</Label>
-                <span className={`font-medium ${costChangeDisplay >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {costChangeDisplay >= 0 ? '+' : ''}{formatCurrency(costChangeDisplay)}
-                </span>
+                <Label>Additional Cost / month</Label>
+                <span className="font-medium">{formatCurrency(Math.abs(costChangeDisplay))}</span>
               </div>
 
-              <div className="flex justify-between items-center text-sm">
-                <Label>New Total Cost / month</Label>
-                <span className="font-medium">{formatCurrency(newCostDisplay)}</span>
-              </div>
-              
               <div className="flex justify-between items-center">
                 <Label htmlFor="effectiveDate" className="text-sm">Effective Date</Label>
                 <div className="w-48 flex justify-end">

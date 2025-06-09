@@ -347,29 +347,24 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
       </main>
 
       {/* Generic Dialog for Adjustable Fixed Price Items */}
-      {activeSubscription && currentInstance && featureToAdjust && featureToAdjust.priceIntervalId && (
+      {isAdjustFixedPriceDialogOpen && activeSubscription && currentInstance && featureToAdjust && (
         <ManageFixedPriceItemDialog
-          key={featureToAdjust.priceIntervalId}
           open={isAdjustFixedPriceDialogOpen}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) {
-              setIsAdjustFixedPriceDialogOpen(false);
-              setFeatureToAdjust(null);
-            }
-          }}
+          onOpenChange={setIsAdjustFixedPriceDialogOpen}
           itemName={featureToAdjust.name}
-          dialogTitle={`Adjust ${featureToAdjust.name} Quantity`}
-          dialogDescription={`Set the total number of ${featureToAdjust.name.toLowerCase()} effective from the chosen date.`}
-          currentQuantity={featureToAdjust.rawQuantity ?? 0}
-          addOnPrice={featureToAdjust.rawOveragePrice ?? 0}
+          dialogTitle={`Manage ${featureToAdjust.name}`}
+          currentQuantity={featureToAdjust.rawQuantity || 0}
+          addOnPrice={featureToAdjust.rawOveragePrice || 0}
           subscriptionId={activeSubscription.id}
-          priceIntervalId={featureToAdjust.priceIntervalId}
-          currentPeriodStartDate={activeSubscription.current_period_start}
+          priceIntervalId={featureToAdjust.priceIntervalId!}
+          priceAppliesToFirstUnit={featureToAdjust.priceModelType === "per_unit_with_minimum"}
+          instance={currentInstance}
           activeSubscription={activeSubscription}
+          currentPeriodStartDate={activeSubscription.current_period_start}
           onScheduleSuccess={handleDialogSuccessAndClose}
           onRemoveSuccess={handleDialogSuccessAndClose}
-          instance={currentInstance}
-          priceAppliesToFirstUnit={featureToAdjust.priceModelType === 'unit'}
+          companyKey={ORB_INSTANCES[currentInstance]?.companyKey}
+          planId={activeSubscription.plan?.id}
         />
       )}
       

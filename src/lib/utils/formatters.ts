@@ -59,7 +59,7 @@ export const getStatusColor = (status: SubscriptionStatus): string => {
  * @param options Optional parameters.
  * @param options.itemName The name of the item/unit this price is for (e.g., "Standard Request Tokens", "GB").
  * @param options.perItemSuffix The string to append if itemName is provided (e.g., "/", " per "). Defaults to " / ".
- * @param options.decimalPlaces The number of decimal places to format the amount to. Defaults to 2.
+ * @param options.decimalPlaces The number of decimal places to format the amount to. Defaults to 2. Pass undefined for auto-detection based on amount size.
  * @returns A formatted string representing the currency value, e.g., "$10.00 / unit", "50 token credits".
  */
 export const formatCurrencyValue = (
@@ -80,12 +80,37 @@ export const formatCurrencyValue = (
   const formattedCurrencyName = currencyCode.replace(/_/g, ' ');
   const isUSD = currencyCode.toUpperCase() === 'USD';
   const currencyDisplay = isUSD ? '$' : formattedCurrencyName;
-  const decimalPlaces = options?.decimalPlaces === undefined ? 2 : options.decimalPlaces;
+  
+  // Improved decimal places logic
+  let decimalPlaces: number;
+  if (options?.decimalPlaces === undefined) {
+    // Auto-detect decimal places based on amount size
+    if (numericAmount === 0) {
+      decimalPlaces = 2;
+    } else if (numericAmount < 0.001) {
+      decimalPlaces = 6; // Show up to 6 decimal places for very small amounts
+    } else if (numericAmount < 0.01) {
+      decimalPlaces = 5; // Show up to 5 decimal places for small amounts
+    } else if (numericAmount < 0.1) {
+      decimalPlaces = 4; // Show up to 4 decimal places
+    } else if (numericAmount < 1) {
+      decimalPlaces = 3; // Show up to 3 decimal places
+    } else {
+      decimalPlaces = 2; // Default 2 decimal places for larger amounts
+    }
+  } else {
+    decimalPlaces = options.decimalPlaces;
+  }
   
   let formattedAmountString = numericAmount.toFixed(decimalPlaces);
-  // Remove .00 for whole numbers, but respect specified decimalPlaces if not 2 (or if amount is not whole after formatting)
-  if (decimalPlaces === 2 && numericAmount % 1 === 0) {
+  
+  // Only remove trailing zeros and decimal point for non-zero amounts
+  // and only when using 2 decimal places (not auto-detected)
+  if (options?.decimalPlaces === 2 && numericAmount > 0 && numericAmount % 1 === 0) {
      formattedAmountString = numericAmount.toFixed(0);
+  } else if (options?.decimalPlaces === undefined) {
+    // For auto-detected decimal places, remove trailing zeros
+    formattedAmountString = parseFloat(formattedAmountString).toString();
   }
 
   let result = "";

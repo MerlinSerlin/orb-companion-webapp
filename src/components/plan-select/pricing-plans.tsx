@@ -75,7 +75,6 @@ export function PricingPlans({ instance }: PricingPlansProps) {
               price={plan.price}
               billingInterval={plan.billingInterval}
               features={plan.features}
-              popular={plan.popular}
               onSubscribe={() => handlePlanSelect(plan.plan_id)}
               onContactSales={handleContactSales} // Pass the general contact sales handler
               cta={plan.cta} // Pass the cta from the plan object
