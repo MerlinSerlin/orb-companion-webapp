@@ -23,7 +23,6 @@ export interface PlanUIDetail {
   allowedAddOnPriceIds?: string[];
   entitlementMinimums?: EntitlementMinimums; // New field for minimum quantities
   cta: string;
-  popular: boolean;
 }
 
 export interface CompanyPlanData {
@@ -60,7 +59,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         ],
         allowedAddOnPriceIds: [],
         cta: "Select Starter",
-        popular: false,
       },
       {
         plan_id: "bvVSqtKcsErM9Rxi",
@@ -87,7 +85,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           "Concurrent Builds": 1, // Pro plan base level
         },
         cta: "Select Pro",
-        popular: true,
       },
       {
         plan_id: "NRjuWfYe7QLVfiXk",
@@ -115,7 +112,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           "Concurrent Builds": 100, // Enterprise plan base level
         },
         cta: "Contact Sales",
-        popular: false,
       },
     ],
     // Order of features to display in the UI
@@ -153,7 +149,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         ],
         allowedAddOnPriceIds: ['TEE8AfhNoSybQ8Nj'],
         cta: "Subscribe",
-        popular: false,
       },
       {
         plan_id: "LKsipzW4a3pZ2csm",
@@ -177,7 +172,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         ],
         allowedAddOnPriceIds: [], // No add-ons for this plan yet
         cta: "Subscribe",
-        popular: false,
       },
       {
         plan_id: "neural_prime_enterprise",
@@ -192,7 +186,6 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "RBAC and SSO", value: "Available" },
         ],
         cta: "Contact Sales",
-        popular: false,
       },
     ],
     entitlementDisplayOrder: [ /* ... */ ],  
