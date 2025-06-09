@@ -7,6 +7,11 @@ export interface EntitlementFeatureDisplay {
   perUnitDisplayName?: string;
 }
 
+// New interface for minimum quantity constraints
+export interface EntitlementMinimums {
+  [entitlementName: string]: number;
+}
+
 export interface PlanUIDetail {
   plan_id: string;
   name: string;
@@ -16,6 +21,7 @@ export interface PlanUIDetail {
   features: EntitlementFeatureDisplay[];
   displayedEntitlementsOverride?: EntitlementFeatureDisplay[];
   allowedAddOnPriceIds?: string[];
+  entitlementMinimums?: EntitlementMinimums; // New field for minimum quantities
   cta: string;
   popular: boolean;
 }
@@ -77,11 +83,14 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Observability", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
         allowedAddOnPriceIds: ["RmP4RPnRjGpTE29V"], // Observability price ID
+        entitlementMinimums: {
+          "Concurrent Builds": 1, // Pro plan base level
+        },
         cta: "Select Pro",
         popular: true,
       },
       {
-        plan_id: "bhmJBqKathJDQapv",
+        plan_id: "NRjuWfYe7QLVfiXk",
         name: "Enterprise",
         description: "For large-scale applications with high demands",
         price: "Custom",
@@ -102,6 +111,9 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Observability", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
         allowedAddOnPriceIds: ["RmP4RPnRjGpTE29V"], // Observability price ID
+        entitlementMinimums: {
+          "Concurrent Builds": 100, // Enterprise plan base level
+        },
         cta: "Contact Sales",
         popular: false,
       },
@@ -199,4 +211,32 @@ export const getCurrentCompanyConfig = (companyKey: string): CompanyPlanData => 
     throw new Error(`Invalid company key: "${companyKey}". This indicates a bug in the application configuration.`);
   }
   return config;
+};
+
+// --- Helper Function to Get Minimum Quantity for an Entitlement ---
+export const getEntitlementMinimum = (
+  companyKey: string, 
+  planId: string, 
+  entitlementName: string
+): number => {
+  try {
+    const companyConfig = getCurrentCompanyConfig(companyKey);
+    const plan = companyConfig.uiPlans.find(p => p.plan_id === planId);
+    
+    if (!plan) {
+      console.warn(`Plan with ID "${planId}" not found for company "${companyKey}". Defaulting to minimum of 1.`);
+      return 1;
+    }
+    
+    const minimum = plan.entitlementMinimums?.[entitlementName];
+    if (minimum !== undefined) {
+      return minimum;
+    }
+    
+    // Default minimum for fixed price items that don't have explicit minimums
+    return 1;
+  } catch (error) {
+    console.warn(`Error getting minimum for entitlement "${entitlementName}":`, error);
+    return 1; // Safe fallback
+  }
 };
