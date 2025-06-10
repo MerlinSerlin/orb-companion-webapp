@@ -57,6 +57,13 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Builds", value: "100 per month" },
           { name: "Build Minutes", value: "300 minutes" },
         ],
+        displayedEntitlementsOverride: [
+          { name: "Nimbus Scale Bandwidth GB", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "gb" },
+          { name: "Nimbus Scale Edge Requests", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "edge request" },
+          { name: "Nimbus Scale Builds", value: "Unlimited" },
+          { name: "Nimbus Scale Build Minutes", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "build minute" },
+          { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" },
+        ],
         allowedAddOnPriceIds: [],
         cta: "Select Starter",
       },
