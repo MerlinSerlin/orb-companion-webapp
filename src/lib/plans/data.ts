@@ -22,6 +22,7 @@ export interface PlanUIDetail {
   displayedEntitlementsOverride?: EntitlementFeatureDisplay[];
   allowedAddOnPriceIds?: string[];
   entitlementMinimums?: EntitlementMinimums; // New field for minimum quantities
+  allowedPlanUpgradeID?: string; // ID of plan this plan can upgrade to
   cta: string;
 }
 
@@ -65,10 +66,11 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" },
         ],
         allowedAddOnPriceIds: [],
+        allowedPlanUpgradeID: "fZhsZhJunwUiPnnj", // Can upgrade to Pro plan
         cta: "Select Starter",
       },
       {
-        plan_id: "bvVSqtKcsErM9Rxi",
+        plan_id: "fZhsZhJunwUiPnnj",
         name: "Pro",
         description: "For growing businesses and high-traffic sites",
         price: "$99",
@@ -81,7 +83,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         ],
         displayedEntitlementsOverride: [
           { name: "Nimbus Scale Bandwidth GB", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "gb" },
-          { name: "Nimbus Scale Edge Requests", value: "5M requests", perUnitDisplayName: "edge request" },
+          { name: "Nimbus Scale Edge Requests", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "edge request" },
           { name: "Nimbus Scale Builds", value: "Unlimited" },
           { name: "Nimbus Scale Build Minutes", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "build minute" },
           { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" },

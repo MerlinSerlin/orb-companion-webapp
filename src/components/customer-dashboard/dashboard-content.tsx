@@ -275,8 +275,8 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
             <TabsContent value="subscriptions">
               <div className="grid gap-6 md:grid-cols-2">
                 <SubscriptionDetailsCard 
-                  activeSubscription={null} 
-                  customerId={stableCustomerId || "Loading customer..."} 
+                  subscription={null} 
+                  companyKey={currentInstance ? ORB_INSTANCES[currentInstance]?.companyKey : undefined}
                 />
                 <EntitlementsCard 
                   features={[]}
@@ -329,7 +329,11 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
             </TabsList>
             <TabsContent value="subscriptions">
               <div className="grid gap-6 md:grid-cols-2">
-              <SubscriptionDetailsCard activeSubscription={activeSubscription} customerId={stableCustomerId!} />
+                <SubscriptionDetailsCard 
+                  subscription={activeSubscription} 
+                  companyKey={currentInstance ? ORB_INSTANCES[currentInstance]?.companyKey : undefined}
+                  onUpgradeSuccess={refreshSubscriptionData}
+                />
                 <EntitlementsCard 
                   features={features}
                   activeSubscription={activeSubscription}
