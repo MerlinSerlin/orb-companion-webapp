@@ -118,7 +118,15 @@ export function PlanUpgradeDialog({
           duration: 6000,
         });
         
+        // Trigger immediate refresh
         onUpgradeSuccess?.();
+        
+        // Also trigger a delayed refresh in case Orb takes time to update
+        setTimeout(() => {
+          console.log("[PlanUpgradeDialog] Triggering delayed refresh after plan upgrade");
+          onUpgradeSuccess?.();
+        }, 2000); // 2 second delay
+        
         onOpenChange(false);
       } else {
         toast.error("Upgrade Failed", {

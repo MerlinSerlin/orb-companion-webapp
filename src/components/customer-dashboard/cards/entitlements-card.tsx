@@ -12,10 +12,11 @@ import { getAddOnKeyByPriceId, getAddOnDisplayNameFromKey, getCurrentInstanceAdd
 interface EntitlementsCardProps {
   features: EntitlementFeature[];
   activeSubscription: Subscription | null;
-  onOpenAdjustFixedPriceDialog?: (feature: EntitlementFeature) => void; // Changed from onOpenAddOnDialog
+  onOpenAdjustFixedPriceDialog?: (feature: EntitlementFeature) => void;
   onInitiateAddAddOn: (priceId: string, itemName: string) => void; 
   onRemoveScheduledTransition?: (priceIntervalId: string, effectiveDate: string) => void;
   onOpenCancelFutureDialog?: (priceIntervalId: string, priceIntervalName: string, currentStartDate: string) => void;
+  onOpenRemoveActiveDialog?: (priceIntervalId: string, priceIntervalName: string) => void;
   isLoading?: boolean;
 }
 
@@ -35,18 +36,19 @@ const EntitlementSkeletonItem = () => (
 export function EntitlementsCard({ 
   features, 
   activeSubscription,
-  onOpenAdjustFixedPriceDialog, // Use new prop
+  onOpenAdjustFixedPriceDialog,
   onInitiateAddAddOn, 
   onRemoveScheduledTransition, 
   onOpenCancelFutureDialog,
+  onOpenRemoveActiveDialog,
   isLoading
 }: EntitlementsCardProps) {
   
-  // Calculate all future intervals for features that can be cancelled
+  // Calculate future add-on intervals (scheduled for tomorrow or later)
   const futureIntervalsMap = React.useMemo(() => {
     if (!activeSubscription?.price_intervals) return new Map();
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
     const currentInstanceAddOns = getCurrentInstanceAddOns();
     const allAddOnPriceIds = currentInstanceAddOns 
       ? Object.values(currentInstanceAddOns).map(addOn => addOn.priceId)
@@ -55,23 +57,63 @@ export function EntitlementsCard({
     const intervalsMap = new Map();
     const priceIntervals = activeSubscription.price_intervals;
 
-    // Find future intervals for each feature
+    // Find future add-on intervals (starting tomorrow or later)
     features.forEach(feature => {
       if (!feature.priceId) return;
 
       const futureInterval = priceIntervals.find(interval => {
-        const hasStart = interval.start_date && interval.start_date > today;
+        // Convert timestamp to YYYY-MM-DD for comparison
+        const intervalStartDate = interval.start_date ? interval.start_date.split('T')[0] : '';
+        const isFuture = intervalStartDate > today; // Strictly future (tomorrow+)
         const notCancelled = !interval.end_date || interval.end_date !== interval.start_date;
         const hasPrice = interval.price && interval.price.id;
         const notPlatformFee = interval.price?.item?.name !== "Platform Fee";
         const isAddOnPrice = interval.price?.id && allAddOnPriceIds.includes(interval.price.id);
         const matchesPriceId = interval.price?.id === feature.priceId;
         
-        return hasStart && notCancelled && hasPrice && notPlatformFee && isAddOnPrice && matchesPriceId;
+        return isFuture && notCancelled && hasPrice && notPlatformFee && isAddOnPrice && matchesPriceId;
       });
 
       if (futureInterval) {
         intervalsMap.set(feature.priceId, futureInterval);
+      }
+    });
+
+    return intervalsMap;
+  }, [activeSubscription, features]);
+
+  // Calculate active add-on intervals (including those starting today)  
+  const activeAddOnIntervalsMap = React.useMemo(() => {
+    if (!activeSubscription?.price_intervals) return new Map();
+
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const currentInstanceAddOns = getCurrentInstanceAddOns();
+    const allAddOnPriceIds = currentInstanceAddOns 
+      ? Object.values(currentInstanceAddOns).map(addOn => addOn.priceId)
+      : [];
+
+    const intervalsMap = new Map();
+    const priceIntervals = activeSubscription.price_intervals;
+
+    // Find active add-on intervals (started today or earlier)
+    features.forEach(feature => {
+      if (!feature.priceId) return;
+
+      const activeInterval = priceIntervals.find(interval => {
+        // Convert timestamp to YYYY-MM-DD for comparison
+        const intervalStartDate = interval.start_date ? interval.start_date.split('T')[0] : '';
+        const hasStartedOrStartsToday = intervalStartDate <= today; // Started today or earlier
+        const notCancelled = !interval.end_date || interval.end_date !== interval.start_date;
+        const hasPrice = interval.price && interval.price.id;
+        const notPlatformFee = interval.price?.item?.name !== "Platform Fee";
+        const isAddOnPrice = interval.price?.id && allAddOnPriceIds.includes(interval.price.id);
+        const matchesPriceId = interval.price?.id === feature.priceId;
+        
+        return hasStartedOrStartsToday && notCancelled && hasPrice && notPlatformFee && isAddOnPrice && matchesPriceId;
+      });
+
+      if (activeInterval) {
+        intervalsMap.set(feature.priceId, activeInterval);
       }
     });
 
@@ -122,14 +164,8 @@ export function EntitlementsCard({
     ? companyConfig.uiPlans.find(p => p.plan_id === activeSubscription!.plan!.id)
     : null;
 
-  // DEBUGGING: Log the features array received by the card
-  console.log("[EntitlementsCard] Features prop:", JSON.stringify(features, null, 2));
-
   const allowedAddOnsToDisplay = (currentPlanDetails?.allowedAddOnPriceIds || [])
     .map(priceId => {
-      // DEBUGGING: Log current priceId from allowedAddOnPriceIds
-      console.log(`[EntitlementsCard] Checking allowed add-on priceId: ${priceId}`);
-
       const addOnKey = getAddOnKeyByPriceId(priceId); 
       if (!addOnKey) {
         console.warn(`[EntitlementsCard] Could not find addOnKey for priceId: ${priceId}. Instance selected: ${selectedInstance}`);
@@ -137,22 +173,11 @@ export function EntitlementsCard({
       }
       const displayName = getAddOnDisplayNameFromKey(addOnKey);
       
-      // DEBUGGING: Log before the .some() check
-      console.log(`[EntitlementsCard] About to check if priceId ${priceId} (Display: ${displayName}) is active in features list.`);
-      features.forEach(f => console.log(`[EntitlementsCard] Feature in list: name=${f.name}, priceId=${f.priceId}`));
-
-      const isAlreadyActive = features.some(f => {
-        // DEBUGGING: Log comparison
-        console.log(`[EntitlementsCard] Comparing f.priceId (${f.priceId}) with priceId (${priceId}). Match: ${f.priceId === priceId}`);
-        return f.priceId === priceId;
-      });
+      const isAlreadyActive = features.some(f => f.priceId === priceId);
       
-      // DEBUGGING: Log result of isAlreadyActive
-      console.log(`[EntitlementsCard] isAlreadyActive for priceId ${priceId} (Display: ${displayName}): ${isAlreadyActive}`);
-
       return isAlreadyActive ? null : { priceId, displayName, addOnKey };
     })
-    .filter(Boolean) as { priceId: string; displayName: string; addOnKey: string }[]; // Type assertion after filter(Boolean)
+    .filter(Boolean) as { priceId: string; displayName: string; addOnKey: string }[];
 
   return (
     <Card>
@@ -223,9 +248,9 @@ export function EntitlementsCard({
                       const actualInterval = futureInterval || findIntervalForFeature(feature.priceId || '');
                       
                       if (actualInterval && actualInterval.start_date) {
-                        // Use the actual start_date from the interval (ISO format)
-                        const intervalStartDate = actualInterval.start_date.split('T')[0]; // Extract YYYY-MM-DD
-                        const today = new Date().toISOString().split('T')[0]; // Get today in YYYY-MM-DD format
+                        // Convert timestamp to YYYY-MM-DD for comparison
+                        const intervalStartDate = actualInterval.start_date.split('T')[0];
+                        const today = new Date().toISOString().split('T')[0];
                         
                         // Only show if the date is in the future
                         if (intervalStartDate > today) {
@@ -277,6 +302,20 @@ export function EntitlementsCard({
                       }}
                     >
                       Cancel Schedule
+                    </Button>
+                  )}
+                  {/* Remove Entitlement button for active add-ons (including those starting today) */}
+                  {!futureInterval && feature.priceId && activeAddOnIntervalsMap.get(feature.priceId) && onOpenRemoveActiveDialog && (
+                    <Button
+                      variant="outline" size="sm" className="mt-1 h-6 px-2 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        const activeInterval = activeAddOnIntervalsMap.get(feature.priceId!);
+                        if (activeInterval) {
+                          onOpenRemoveActiveDialog(activeInterval.id, feature.name);
+                        }
+                      }}
+                    >
+                      Remove Entitlement
                     </Button>
                   )}
                 </div>
