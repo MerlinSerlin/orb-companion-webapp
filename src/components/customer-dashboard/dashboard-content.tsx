@@ -16,6 +16,7 @@ import { getCurrentCompanyConfig } from "@/lib/plans";
 import { ManageFixedPriceItemDialog } from "./dialogs/manage-fixed-price-item-dialog";
 import { AddNewFloatingPriceDialog } from "./dialogs/add-new-floating-price-dialog";
 import { CancelFuturePriceIntervalDialog } from "@/components/dialogs/cancel-future-price-interval-dialog";
+import { RemoveActiveEntitlementDialog } from "@/components/dialogs/remove-active-entitlement-dialog";
 import { useQueryClient } from '@tanstack/react-query'
 import { deriveEntitlementsFromSubscription, type EntitlementFeature } from "@/lib/utils/subscriptionUtils";
 import { useCustomerSubscriptions, useCustomerDetails } from "@/hooks/useCustomerData";
@@ -35,17 +36,6 @@ export type { Subscription };
 interface CustomerDashboardContentProps {
   customerId: string; // ID from URL Prop, should be the source of truth post-hydration
   instance?: OrbInstance; // Prop instance, can serve as SSR hint or fallback
-}
-
-interface AddOnInitiateData {
-  priceId: string;
-  itemName: string;
-}
-
-interface FutureScheduledIntervalData {
-  priceIntervalId: string;
-  priceIntervalName: string;
-  currentStartDate: string;
 }
 
 export function CustomerDashboardContent({ customerId: customerIdProp, instance: instanceProp }: CustomerDashboardContentProps) {
@@ -68,15 +58,14 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
 
   const currentInstance = isClientMounted ? (storeSelectedInstance || instanceProp) : undefined;
   
-  // State for the generic fixed price item adjustment dialog
+  // Dialog states
   const [isAdjustFixedPriceDialogOpen, setIsAdjustFixedPriceDialogOpen] = useState(false);
   const [featureToAdjust, setFeatureToAdjust] = useState<EntitlementFeature | null>(null);
-  
-  const [addOnToInitiate, setAddOnToInitiate] = useState<AddOnInitiateData | null>(null);
-
-  // State for the cancel future price interval dialog
+  const [addOnToInitiate, setAddOnToInitiate] = useState<{ priceId: string; itemName: string } | null>(null);
   const [isCancelFutureDialogOpen, setIsCancelFutureDialogOpen] = useState(false);
-  const [futureIntervalToCancel, setFutureIntervalToCancel] = useState<FutureScheduledIntervalData | null>(null);
+  const [futureIntervalToCancel, setFutureIntervalToCancel] = useState<{ priceIntervalId: string; priceIntervalName: string; currentStartDate: string } | null>(null);
+  const [isRemoveActiveDialogOpen, setIsRemoveActiveDialogOpen] = useState(false);
+  const [activeIntervalToRemove, setActiveIntervalToRemove] = useState<{ priceIntervalId: string; priceIntervalName: string } | null>(null);
 
   const { 
     data: customerDetails, 
@@ -224,9 +213,18 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
   };
 
   const refreshSubscriptionData = () => {
+    console.log("[Dashboard] Refreshing subscription data...", { stableCustomerId, currentInstance });
     if (stableCustomerId && currentInstance) {
+        // Invalidate queries and refetch immediately
         queryClient.invalidateQueries({ queryKey: ['subscriptions', stableCustomerId, currentInstance] });
         queryClient.invalidateQueries({ queryKey: ['customerDetails', stableCustomerId, currentInstance] });
+        
+        // Also force a refetch to ensure fresh data
+        queryClient.refetchQueries({ queryKey: ['subscriptions', stableCustomerId, currentInstance] });
+        
+        console.log("[Dashboard] Subscription data refresh triggered successfully");
+    } else {
+        console.warn("[Dashboard] Cannot refresh - missing stableCustomerId or currentInstance", { stableCustomerId, currentInstance });
     }
   };
 
@@ -249,15 +247,23 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
     setFutureIntervalToCancel({ priceIntervalId, priceIntervalName, currentStartDate });
     setIsCancelFutureDialogOpen(true);
   };
+
+  const handleOpenRemoveActiveDialog = (priceIntervalId: string, priceIntervalName: string) => {
+    setActiveIntervalToRemove({ priceIntervalId, priceIntervalName });
+    setIsRemoveActiveDialogOpen(true);
+  };
   
   const handleDialogSuccessAndClose = () => {
       refreshSubscriptionData();
       setIsAdjustFixedPriceDialogOpen(false); 
-      setFeatureToAdjust(null); // Clear the feature being adjusted
+      setFeatureToAdjust(null);
       setAddOnToInitiate(null);
       // Clear cancel dialog state
       setIsCancelFutureDialogOpen(false);
       setFutureIntervalToCancel(null);
+      // Clear remove active dialog state
+      setIsRemoveActiveDialogOpen(false);
+      setActiveIntervalToRemove(null);
   };
 
   const showSkeletonView = !isClientMounted || !stableCustomerId || !currentInstance || !companyConfig || !isReadyToFetch || customerDetailsLoading || (isReadyToFetch && subscriptionsLoading);
@@ -275,8 +281,8 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
             <TabsContent value="subscriptions">
               <div className="grid gap-6 md:grid-cols-2">
                 <SubscriptionDetailsCard 
-                  activeSubscription={null} 
-                  customerId={stableCustomerId || "Loading customer..."} 
+                  subscription={null} 
+                  companyKey={currentInstance ? ORB_INSTANCES[currentInstance]?.companyKey : undefined}
                 />
                 <EntitlementsCard 
                   features={[]}
@@ -285,6 +291,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
                   onInitiateAddAddOn={handleInitiateAddAddOn}
                   onRemoveScheduledTransition={handleRemoveScheduledTransition}
                   onOpenCancelFutureDialog={handleOpenCancelFutureDialog}
+                  onOpenRemoveActiveDialog={handleOpenRemoveActiveDialog}
                   isLoading={true}
                 />
               </div>
@@ -329,7 +336,11 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
             </TabsList>
             <TabsContent value="subscriptions">
               <div className="grid gap-6 md:grid-cols-2">
-              <SubscriptionDetailsCard activeSubscription={activeSubscription} customerId={stableCustomerId!} />
+                <SubscriptionDetailsCard 
+                  subscription={activeSubscription} 
+                  companyKey={currentInstance ? ORB_INSTANCES[currentInstance]?.companyKey : undefined}
+                  onUpgradeSuccess={refreshSubscriptionData}
+                />
                 <EntitlementsCard 
                   features={features}
                   activeSubscription={activeSubscription}
@@ -337,6 +348,8 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
                   onInitiateAddAddOn={handleInitiateAddAddOn}
                   onRemoveScheduledTransition={handleRemoveScheduledTransition}
                   onOpenCancelFutureDialog={handleOpenCancelFutureDialog}
+                  onOpenRemoveActiveDialog={handleOpenRemoveActiveDialog}
+                  isLoading={subscriptionsLoading}
                 />
               </div>
             </TabsContent>
@@ -394,6 +407,22 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
           priceIntervalId={futureIntervalToCancel.priceIntervalId}
           priceIntervalName={futureIntervalToCancel.priceIntervalName}
           currentStartDate={futureIntervalToCancel.currentStartDate}
+          currentInstance={currentInstance}
+          onSuccess={handleDialogSuccessAndClose}
+        />
+      )}
+
+      {/* Remove Active Entitlement Dialog */}
+      {activeIntervalToRemove && currentInstance && (
+        <RemoveActiveEntitlementDialog
+          isOpen={isRemoveActiveDialogOpen}
+          onClose={() => {
+            setIsRemoveActiveDialogOpen(false);
+            setActiveIntervalToRemove(null);
+          }}
+          subscriptionId={activeSubscription?.id || ''}
+          priceIntervalId={activeIntervalToRemove.priceIntervalId}
+          priceIntervalName={activeIntervalToRemove.priceIntervalName}
           currentInstance={currentInstance}
           onSuccess={handleDialogSuccessAndClose}
         />

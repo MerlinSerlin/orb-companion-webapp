@@ -531,4 +531,73 @@ export async function listPlans(instance: OrbInstance = 'cloud-infra') {
       error: error instanceof Error ? error.message : "Failed to list plans"
     };
   }
+}
+
+export async function schedulePlanChange(
+  subscriptionId: string,
+  targetPlanId: string,
+  changeOption: 'immediate' | 'end_of_subscription_term' | 'requested_date' = 'immediate',
+  changeDate?: string,
+  instance: OrbInstance = 'cloud-infra'
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[Action] Scheduling plan change for subscription ${subscriptionId} to plan ${targetPlanId} with option ${changeOption} in instance: ${instance}`);
+
+  const instanceConfig = ORB_INSTANCES[instance];
+  const apiKey = instanceConfig.apiKey;
+  if (!apiKey) {
+    console.error(`[Action] Orb API key is not configured for instance: ${instance}.`);
+    return { success: false, error: 'Server configuration error.' };
+  }
+  
+  if (!subscriptionId || !targetPlanId) {
+    return { success: false, error: 'Missing required parameters for scheduling plan change.' };
+  }
+
+  // Validate changeDate if using requested_date option
+  if (changeOption === 'requested_date') {
+    if (!changeDate) {
+      return { success: false, error: 'Change date is required when using requested_date option.' };
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(changeDate)) {
+      return { success: false, error: 'Invalid change date format. Use YYYY-MM-DD.' };
+    }
+  }
+
+  try {
+    const instanceOrbClient = createOrbClient(instance);
+    
+    const payload: {
+      plan_id: string;
+      change_option: 'immediate' | 'end_of_subscription_term' | 'requested_date';
+      change_date?: string;
+    } = {
+      plan_id: targetPlanId,
+      change_option: changeOption,
+    };
+
+    // Only include change_date if using requested_date option
+    if (changeOption === 'requested_date' && changeDate) {
+      payload.change_date = changeDate;
+    }
+
+    console.log("[Action] Sending plan change payload:", JSON.stringify(payload, null, 2));
+
+    // Use the SDK's schedulePlanChange method
+    await instanceOrbClient.subscriptions.schedulePlanChange(subscriptionId, payload);
+
+    console.log(`[Action] Successfully scheduled plan change for subscription ${subscriptionId} to plan ${targetPlanId}`);
+    return { success: true };
+
+  } catch (error) {
+    console.error("[Action] Error scheduling plan change:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    
+    // @ts-expect-error - error response type is unknown but may contain response.data from Orb API
+    if (error && error.response && error.response.data) {
+        // @ts-expect-error - accessing response.data which exists on axios errors but not typed
+        console.error("[Action] Orb Error Details:", JSON.stringify(error.response.data, null, 2));
+    }
+    
+    return { success: false, error: errorMessage };
+  }
 } 

@@ -165,6 +165,7 @@ export interface Plan {
   id: string;
   name: string;
   description?: string | null;
+  prices?: Price[] | null; // Add prices array
   // Add other plan fields if needed
 }
 
