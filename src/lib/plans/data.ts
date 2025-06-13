@@ -12,6 +12,11 @@ export interface EntitlementMinimums {
   [entitlementName: string]: number;
 }
 
+// New interface for controlling which entitlements can be adjusted
+export interface AdjustableEntitlements {
+  [entitlementName: string]: boolean;
+}
+
 export interface PlanUIDetail {
   plan_id: string;
   name: string;
@@ -22,6 +27,7 @@ export interface PlanUIDetail {
   displayedEntitlementsOverride?: EntitlementFeatureDisplay[];
   allowedAddOnPriceIds?: string[];
   entitlementMinimums?: EntitlementMinimums; // New field for minimum quantities
+  adjustableEntitlements?: AdjustableEntitlements; // New field for controlling adjustability
   allowedPlanUpgradeID?: string; // ID of plan this plan can upgrade to
   cta: string;
 }
@@ -54,18 +60,21 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         features: [
           { name: "Bandwidth", value: "100 GB" },
           { name: "Edge Requests", value: "1M requests" },
-          { name: "Storage", value: "10 GB" },
           { name: "Builds", value: "100 per month" },
           { name: "Build Minutes", value: "300 minutes" },
+          { name: "Concurrent Builds", value: "1" },
         ],
         displayedEntitlementsOverride: [
           { name: "Nimbus Scale Bandwidth GB", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "gb" },
           { name: "Nimbus Scale Edge Requests", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "edge request" },
           { name: "Nimbus Scale Builds", value: "Unlimited" },
           { name: "Nimbus Scale Build Minutes", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "build minute" },
-          { name: "Concurrent Builds", value: "%%USE_DYNAMIC_VALUE%%" },
+          { name: "Concurrent Builds", value: "1" },
         ],
         allowedAddOnPriceIds: [],
+        adjustableEntitlements: {
+          "Concurrent Builds": false, // Starter plan: no adjustment allowed
+        },
         allowedPlanUpgradeID: "fZhsZhJunwUiPnnj", // Can upgrade to Pro plan
         cta: "Select Starter",
       },
@@ -80,6 +89,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Edge Requests", value: "5M requests" },
           { name: "Builds", value: "Unlimited" },
           { name: "Build Minutes", value: "1,000 minutes" },
+          { name: "Concurrent Builds", value: "Available" },
         ],
         displayedEntitlementsOverride: [
           { name: "Nimbus Scale Bandwidth GB", value: "%%USE_DYNAMIC_VALUE%%", perUnitDisplayName: "gb" },
@@ -92,6 +102,9 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         allowedAddOnPriceIds: ["RmP4RPnRjGpTE29V"], // Observability price ID
         entitlementMinimums: {
           "Concurrent Builds": 1, // Pro plan base level
+        },
+        adjustableEntitlements: {
+          "Concurrent Builds": true, // Pro plan: adjustment allowed
         },
         cta: "Select Pro",
       },
@@ -119,6 +132,9 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
         allowedAddOnPriceIds: ["RmP4RPnRjGpTE29V"], // Observability price ID
         entitlementMinimums: {
           "Concurrent Builds": 100, // Enterprise plan base level
+        },
+        adjustableEntitlements: {
+          "Concurrent Builds": true, // Enterprise plan: adjustment allowed
         },
         cta: "Contact Sales",
       },
@@ -240,5 +256,34 @@ export const getEntitlementMinimum = (
   } catch (error) {
     console.warn(`Error getting minimum for entitlement "${entitlementName}":`, error);
     return 1; // Safe fallback
+  }
+};
+
+// --- Helper Function to Check if an Entitlement is Adjustable ---
+export const isEntitlementAdjustable = (
+  companyKey: string, 
+  planId: string, 
+  entitlementName: string
+): boolean => {
+  try {
+    const companyConfig = getCurrentCompanyConfig(companyKey);
+    const plan = companyConfig.uiPlans.find(p => p.plan_id === planId);
+    
+    if (!plan) {
+      console.warn(`Plan with ID "${planId}" not found for company "${companyKey}". Defaulting to not adjustable.`);
+      return false;
+    }
+    
+    const isAdjustable = plan.adjustableEntitlements?.[entitlementName];
+    if (isAdjustable !== undefined) {
+      return isAdjustable;
+    }
+    
+    // Default: if not explicitly configured, assume adjustable for fixed price items
+    // This maintains backward compatibility
+    return true;
+  } catch (error) {
+    console.warn(`Error checking adjustability for entitlement "${entitlementName}":`, error);
+    return false; // Safe fallback - don't show adjust button if unsure
   }
 };

@@ -1,6 +1,7 @@
 import { formatNumber, formatCurrencyValue, formatDate } from '@/lib/utils/formatters';
 import type { Subscription, FixedFeeQuantityTransition, Price, PriceTier, PriceInterval } from '@/lib/types';
 import { getAddOnKeyByPriceId, getAddOnDisplayNameFromKey, getAddOnConfigByKey } from '@/lib/add-on-prices/pricing';
+import { isEntitlementAdjustable } from '../plans/data';
 
 // Define the structure for individual tier details
 export interface TierDetail {
@@ -34,7 +35,9 @@ export interface EntitlementOverrideConfig {
 export function deriveEntitlementsFromSubscription(
   subscription: Subscription | null, 
   entitlementDisplayOrder: string[] = [],
-  entitlementOverridesConfig: Map<string, EntitlementOverrideConfig> = new Map()
+  entitlementOverridesConfig: Map<string, EntitlementOverrideConfig> = new Map(),
+  companyKey?: string,
+  planId?: string
 ): EntitlementFeature[] {
   if (!subscription?.plan?.prices || !subscription?.price_intervals) {
     return [];
@@ -68,7 +71,9 @@ export function deriveEntitlementsFromSubscription(
       activeInterval?.fixed_fee_quantity_transitions,
       activeInterval?.start_date,
       entitlementOverridesConfig,
-      today
+      today,
+      companyKey,
+      planId
     );
     
     if (entitlementFeature) {
@@ -98,7 +103,9 @@ export function deriveEntitlementsFromSubscription(
         interval.fixed_fee_quantity_transitions,
         interval.start_date,
         entitlementOverridesConfig,
-        today
+        today,
+        companyKey,
+        planId
       );
       
       if (entitlementFeature) {
@@ -140,7 +147,9 @@ function createEntitlementFeature(
   fixedFeeQuantityTransitions: FixedFeeQuantityTransition[] | null | undefined,
   startDate: string | null | undefined,
   entitlementOverridesConfig: Map<string, EntitlementOverrideConfig>,
-  today: string
+  today: string,
+  companyKey?: string,
+  planId?: string
 ): EntitlementFeature | null {
   // Get the add-on key and desired display name
   const addOnKey = getAddOnKeyByPriceId(price.id);
@@ -325,9 +334,25 @@ function createEntitlementFeature(
     allFutureTransitions: allFutureTransitions,
     tierDetails: tierDetails || undefined,
     showDetailed: showDetailed,
-    isAdjustableFixedPrice: price.price_type === 'fixed_price' && 
-                              price.item!.name !== 'Platform Fee' &&
-                              !NON_ADJUSTABLE_FIXED_PRICE_ITEM_NAMES.includes(price.item!.name),
+    isAdjustableFixedPrice: (() => {
+      // First check if it's a fixed price item that could potentially be adjustable
+      const isPotentiallyAdjustable = price.price_type === 'fixed_price' && 
+                                      price.item!.name !== 'Platform Fee' &&
+                                      !NON_ADJUSTABLE_FIXED_PRICE_ITEM_NAMES.includes(price.item!.name);
+      
+      // If not potentially adjustable, return false
+      if (!isPotentiallyAdjustable) {
+        return false;
+      }
+      
+      // If we have plan configuration, use it to determine adjustability
+      if (companyKey && planId) {
+        return isEntitlementAdjustable(companyKey, planId, finalDisplayName);
+      }
+      
+      // Fallback to the old logic if no plan configuration is available
+      return true;
+    })(),
     priceModelType: price.model_type,
   };
 }

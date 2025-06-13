@@ -50,6 +50,7 @@ export function PlanUpgradeDialog({
   const [changeOption, setChangeOption] = React.useState<'immediate' | 'end_of_subscription_term' | 'requested_date'>('immediate');
   const [isUpgrading, setIsUpgrading] = React.useState<boolean>(false);
   const selectedInstance = useCustomerStore((state) => state.selectedInstance);
+  const setScheduledPlanChange = useCustomerStore((state) => state.setScheduledPlanChange);
 
   const formatDateForInputInternal = React.useCallback((date: Date): string => {
     const year = date.getUTCFullYear();
@@ -107,6 +108,22 @@ export function PlanUpgradeDialog({
       );
 
       if (result.success) {
+        // Store the scheduled plan change in the customer store
+        const changeDate = changeOption === 'requested_date' && effectiveDateState 
+          ? effectiveDateState.toISOString()
+          : changeOption === 'end_of_subscription_term'
+          ? subscription.current_period_end || null
+          : new Date().toISOString(); // immediate
+
+        setScheduledPlanChange(subscription.id, {
+          subscriptionId: subscription.id,
+          targetPlanId: targetPlan.id,
+          targetPlanName: targetPlan.name,
+          changeDate,
+          changeOption,
+          scheduledAt: new Date().toISOString()
+        });
+
         const timing = changeOption === 'immediate' 
           ? 'immediately' 
           : changeOption === 'end_of_subscription_term' 
@@ -266,7 +283,7 @@ export function PlanUpgradeDialog({
             description={`This shows the API call that will upgrade your plan from ${currentPlan.name} to ${targetPlan.name}.`}
             buttonText="Preview API Call"
             buttonVariant="outline"
-            buttonSize="sm"
+            buttonSize="default"
             disabled={isUpgrading || !isValidForm()}
           />
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUpgrading}>

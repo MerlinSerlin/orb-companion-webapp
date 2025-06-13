@@ -91,30 +91,32 @@ export function ApiPreviewDialog({
           {buttonText}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-w-[90vw]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {description}
-            {endpoint && (
-              <span className="mt-2 flex items-center">
-                <span className={cn(
-                  "px-2 py-1 text-xs font-bold rounded mr-2",
-                  method === "GET" ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" :
-                  method === "POST" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" :
-                  method === "PUT" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" :
-                  method === "DELETE" ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" :
-                  "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"
-                )}>
-                  {method}
-                </span>
-                <code className="text-sm font-mono">{endpoint}</code>
-              </span>
-            )}
           </DialogDescription>
+          {endpoint && (
+            <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className={cn(
+                "px-2 py-1 text-xs font-bold rounded flex-shrink-0",
+                method === "GET" ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" :
+                method === "POST" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" :
+                method === "PUT" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" :
+                method === "DELETE" ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" :
+                "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"
+              )}>
+                {method}
+              </span>
+              <code className="text-sm font-mono break-all overflow-hidden text-ellipsis min-w-0 flex-1">
+                {endpoint}
+              </code>
+            </div>
+          )}
         </DialogHeader>
         
-        <div className="relative mt-4">
+        <div className="relative mt-4 min-w-0">
           <Button
             size="sm"
             variant="ghost"

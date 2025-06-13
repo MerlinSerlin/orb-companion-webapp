@@ -140,7 +140,9 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
     const allDynamicFeatures: EntitlementFeature[] = deriveEntitlementsFromSubscription(
       activeSubscription,
       companyConfig?.entitlementDisplayOrder,
-      entitlementOverridesConfig // Pass the map here
+      entitlementOverridesConfig, // Pass the map here
+      currentInstance ? ORB_INSTANCES[currentInstance]?.companyKey : undefined,
+      activeSubscription?.plan?.id
     );
 
     // 2. Check if an override is defined and has items
@@ -187,7 +189,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
     }
     // 3. No override defined, return all dynamic features
     return allDynamicFeatures;
-  }, [activeSubscription, companyConfig, currentPlanUIDetail]);
+  }, [activeSubscription, companyConfig, currentPlanUIDetail, currentInstance]);
 
   const handleRemoveScheduledTransition = async (priceIntervalId: string, effectiveDate: string) => {
     if (!activeSubscription) {

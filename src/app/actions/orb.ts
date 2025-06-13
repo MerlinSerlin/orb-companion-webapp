@@ -600,4 +600,46 @@ export async function schedulePlanChange(
     
     return { success: false, error: errorMessage };
   }
+}
+
+export async function unschedulePlanChange(
+  subscriptionId: string,
+  instance: OrbInstance = 'cloud-infra'
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[Action] Unscheduling pending plan changes for subscription ${subscriptionId} in instance: ${instance}`);
+
+  const instanceConfig = ORB_INSTANCES[instance];
+  const apiKey = instanceConfig.apiKey;
+  if (!apiKey) {
+    console.error(`[Action] Orb API key is not configured for instance: ${instance}.`);
+    return { success: false, error: 'Server configuration error.' };
+  }
+  
+  if (!subscriptionId) {
+    return { success: false, error: 'Subscription ID is required for unscheduling plan change.' };
+  }
+
+  try {
+    const instanceOrbClient = createOrbClient(instance);
+    
+    console.log(`[Action] Calling unschedule pending plan changes for subscription: ${subscriptionId}`);
+
+    // Use the SDK's unschedulePendingPlanChanges method
+    await instanceOrbClient.subscriptions.unschedulePendingPlanChanges(subscriptionId);
+
+    console.log(`[Action] Successfully unscheduled pending plan changes for subscription ${subscriptionId}`);
+    return { success: true };
+
+  } catch (error) {
+    console.error("[Action] Error unscheduling plan changes:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    
+    // @ts-expect-error - error response type is unknown but may contain response.data from Orb API
+    if (error && error.response && error.response.data) {
+        // @ts-expect-error - accessing response.data which exists on axios errors but not typed
+        console.error("[Action] Orb Error Details:", JSON.stringify(error.response.data, null, 2));
+    }
+    
+    return { success: false, error: errorMessage };
+  }
 } 

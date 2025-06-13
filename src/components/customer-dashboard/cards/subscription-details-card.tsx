@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Subscription } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, CreditCard, ArrowUp } from "lucide-react";
+import { Calendar, CreditCard, ArrowUp, Info, X } from "lucide-react";
 import { formatDate } from "@/lib/utils/formatters";
 import { COMPANY_PLAN_CONFIGS_MAP } from "@/lib/plans/data";
 import { PlanUpgradeDialog } from "../dialogs/plan-upgrade-dialog";
+import { UnschedulePlanChangeDialog } from "../dialogs/unschedule-plan-change-dialog";
+import { useCustomerStore } from "@/lib/store/customer-store";
 
 interface SubscriptionDetailsCardProps {
   subscription?: Subscription | null;
@@ -16,6 +18,9 @@ interface SubscriptionDetailsCardProps {
 
 export function SubscriptionDetailsCard({ subscription, companyKey, onUpgradeSuccess }: SubscriptionDetailsCardProps) {
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [isUnscheduleDialogOpen, setIsUnscheduleDialogOpen] = useState(false);
+  const getScheduledPlanChange = useCustomerStore(state => state.getScheduledPlanChange);
+  const removeScheduledPlanChange = useCustomerStore(state => state.removeScheduledPlanChange);
 
   const getBadgeVariant = (status: string) => {
     switch (status.toLowerCase()) {
@@ -61,6 +66,56 @@ export function SubscriptionDetailsCard({ subscription, companyKey, onUpgradeSuc
       buttonText: `Upgrade to ${targetPlan.name}`
     };
   }, [subscription, companyKey]);
+
+  // Clean up completed scheduled plan changes
+  const scheduledPlanChange = useMemo(() => {
+    if (!subscription) {
+      return null;
+    }
+    
+    const rawScheduledPlanChange = getScheduledPlanChange(subscription.id);
+    
+    if (!rawScheduledPlanChange) {
+      return null;
+    }
+
+    // Check if the scheduled plan change has already been completed
+    if (!subscription.plan?.id) {
+      console.log('Scheduled plan change exists but subscription plan ID is missing');
+      return rawScheduledPlanChange;
+    }
+
+    if (subscription.plan.id === rawScheduledPlanChange.targetPlanId) {
+      console.log('Scheduled plan change completed - cleaning up stale data', {
+        currentPlanId: subscription.plan.id,
+        targetPlanId: rawScheduledPlanChange.targetPlanId
+      });
+      // Clean up the completed scheduled plan change
+      removeScheduledPlanChange(subscription.id);
+      return null;
+    }
+
+    console.log('Scheduled plan change still pending', {
+      currentPlanId: subscription.plan.id,
+      targetPlanId: rawScheduledPlanChange.targetPlanId
+    });
+
+    return rawScheduledPlanChange;
+  }, [subscription, getScheduledPlanChange, removeScheduledPlanChange]);
+
+  // Get the target plan name for scheduled change
+  const targetPlanName = React.useMemo(() => {
+    if (!scheduledPlanChange || !companyKey) return null;
+    
+    const companyConfig = COMPANY_PLAN_CONFIGS_MAP[companyKey];
+    if (!companyConfig) return null;
+
+    const targetPlan = companyConfig.uiPlans.find(plan => 
+      plan.plan_id === scheduledPlanChange.targetPlanId
+    );
+
+    return targetPlan?.name || scheduledPlanChange.targetPlanName;
+  }, [scheduledPlanChange, companyKey]);
 
   return (
     <>
@@ -112,6 +167,25 @@ export function SubscriptionDetailsCard({ subscription, companyKey, onUpgradeSuc
                   </div>
                 </div>
               )}
+
+              {/* Scheduled Plan Change Notification */}
+              {scheduledPlanChange && (
+                <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-blue-900">
+                      Scheduled Plan Change
+                    </p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Your plan will be upgraded to <strong>{targetPlanName}</strong> on{' '}
+                      <strong>{scheduledPlanChange.changeDate ? formatDate(scheduledPlanChange.changeDate) : 'TBD'}</strong>
+                      {scheduledPlanChange.changeOption === 'immediate' && ' (immediate)'}
+                      {scheduledPlanChange.changeOption === 'requested_date' && ' (on requested date)'}
+                      {scheduledPlanChange.changeOption === 'end_of_subscription_term' && ' (at end of current term)'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="space-y-3">
@@ -122,7 +196,16 @@ export function SubscriptionDetailsCard({ subscription, companyKey, onUpgradeSuc
           )}
         </CardContent>
         <CardFooter>
-          {upgradeDetails ? (
+          {scheduledPlanChange ? (
+            <Button 
+              onClick={() => setIsUnscheduleDialogOpen(true)}
+              className="w-full"
+              variant="outline"
+            >
+              <X className="mr-2 h-4 w-4" />
+              Cancel Scheduled Upgrade
+            </Button>
+          ) : upgradeDetails ? (
             <Button 
               onClick={() => setIsUpgradeDialogOpen(true)}
               className="w-full"
@@ -140,7 +223,7 @@ export function SubscriptionDetailsCard({ subscription, companyKey, onUpgradeSuc
       </Card>
 
       {/* Plan Upgrade Dialog */}
-      {upgradeDetails && subscription && (
+      {upgradeDetails && subscription && !scheduledPlanChange && (
         <PlanUpgradeDialog
           open={isUpgradeDialogOpen}
           onOpenChange={setIsUpgradeDialogOpen}
@@ -148,6 +231,17 @@ export function SubscriptionDetailsCard({ subscription, companyKey, onUpgradeSuc
           targetPlan={upgradeDetails.targetPlan}
           subscription={subscription}
           onUpgradeSuccess={onUpgradeSuccess}
+        />
+      )}
+
+      {/* Unschedule Plan Change Dialog */}
+      {scheduledPlanChange && subscription && (
+        <UnschedulePlanChangeDialog
+          open={isUnscheduleDialogOpen}
+          onOpenChange={setIsUnscheduleDialogOpen}
+          subscriptionId={subscription.id}
+          scheduledChange={scheduledPlanChange}
+          onUnscheduleSuccess={onUpgradeSuccess}
         />
       )}
     </>
