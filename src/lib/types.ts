@@ -13,6 +13,13 @@ export interface Subscription {
   current_period_end?: string | null;
   plan?: Plan | null;
   price_intervals?: PriceInterval[] | null;
+  // Fields for tracking scheduled plan changes
+  scheduled_plan_change?: {
+    target_plan_id: string;
+    target_plan_name?: string;
+    change_date?: string | null;
+    change_option: 'immediate' | 'end_of_subscription_term' | 'requested_date';
+  } | null;
 }
 
 /**

@@ -204,7 +204,7 @@ export function EntitlementsCard({
                 <div className="flex flex-col items-end text-right space-y-1">
                   <div className="flex flex-col items-end space-y-1">
                     <span className="font-medium">{feature.baseValue}</span>
-                    {feature.overageInfo && !feature.showDetailed && (
+                    {feature.overageInfo && !feature.showDetailed && feature.isAdjustableFixedPrice && (
                       <span className="text-xs text-muted-foreground">{feature.overageInfo}</span>
                     )}
                     {feature.showDetailed && feature.tierDetails && feature.tierDetails.length > 0 && (
