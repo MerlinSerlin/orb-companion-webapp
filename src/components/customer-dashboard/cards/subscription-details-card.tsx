@@ -67,9 +67,6 @@ export function SubscriptionDetailsCard({ subscription, companyKey, onUpgradeSuc
     };
   }, [subscription, companyKey]);
 
-  // Check if there's a scheduled plan change from the store
-  const rawScheduledPlanChange = subscription?.id ? getScheduledPlanChange(subscription.id) : null;
-  
   // Clean up completed scheduled plan changes
   const scheduledPlanChange = useMemo(() => {
     if (!subscription) {
