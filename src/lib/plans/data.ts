@@ -196,7 +196,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Standard Models", value: ".05 Token Credits per Token Consumed" },
           { name: "Priority Support", value: "Included" },
           { name: "Centralized Billing", value: "Included" },
-          { name: "Multi-repository context", value: "Included" },
+          { name: "Multi-repository Context", value: "Included" },
           { name: "Team Members", value: "%%USE_DYNAMIC_VALUE%%" },
         ],
         allowedAddOnPriceIds: [], // No add-ons for this plan yet
