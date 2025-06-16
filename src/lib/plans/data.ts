@@ -172,6 +172,7 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "Standard Models", value: ".05 Token Credits per Token Consumed" },
           { name: "Premium Models", value: "%%USE_DYNAMIC_VALUE%%" }
         ],
+        allowedPlanUpgradeID: "LKsipzW4a3pZ2csm",
         allowedAddOnPriceIds: ['TEE8AfhNoSybQ8Nj'],
         cta: "Subscribe",
       },
@@ -193,6 +194,9 @@ export const COMPANY_PLAN_CONFIGS_MAP: CompanyConfigsMap = {
           { name: "10K Token Credits/Month", value: "Included" },
           { name: "Premium Models", value: ".25 Token Credits per Token Consumed" },
           { name: "Standard Models", value: ".05 Token Credits per Token Consumed" },
+          { name: "Priority Support", value: "Included" },
+          { name: "Centralized Billing", value: "Included" },
+          { name: "Multi-repository context", value: "Included" },
           { name: "Team Members", value: "%%USE_DYNAMIC_VALUE%%" },
         ],
         allowedAddOnPriceIds: [], // No add-ons for this plan yet
