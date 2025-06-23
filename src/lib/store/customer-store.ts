@@ -83,8 +83,9 @@ export const useCustomerStore = create<CustomerState>()(
           localStorage.removeItem('customer-storage');
         }
       },
-      reset: function() {
-        this.logout();
+      reset: () => {
+        const store = get();
+        store.logout();
       }
     }),
     {
