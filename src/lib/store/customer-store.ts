@@ -79,12 +79,13 @@ export const useCustomerStore = create<CustomerState>()(
         }));
         
         // Clear localStorage
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && window.localStorage) {
           localStorage.removeItem('customer-storage');
         }
       },
-      reset: function() {
-        this.logout();
+      reset: () => {
+        const store = get();
+        store.logout();
       }
     }),
     {
