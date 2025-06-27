@@ -72,7 +72,7 @@ describe('Navigation Protection', () => {
     // Mock React.use to return resolved params
     const mockReact = jest.mocked(React);
     if (mockReact.use) {
-      mockReact.use.mockImplementation((promise: any) => {
+      mockReact.use.mockImplementation((promise: Promise<{ id: string }> | unknown) => {
         if (promise === mockParams) {
           return { id: 'test_customer_123' };
         }
