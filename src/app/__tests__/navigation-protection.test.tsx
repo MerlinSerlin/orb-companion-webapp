@@ -3,6 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { useCustomerStore } from '@/lib/store/customer-store';
 import { CustomerState } from '@/lib/store/customer-store';
 
+// Mock React.use for handling async params in Next.js 15
+jest.mock('react', () => ({
+  ...jest.requireActual('react'),
+  use: jest.fn(),
+}));
+
 // Mock the customer store
 jest.mock('@/lib/store/customer-store');
 
@@ -45,6 +51,7 @@ const mockLocalStorage = {
 
 describe('Navigation Protection', () => {
   const mockUseCustomerStore = useCustomerStore as jest.MockedFunction<typeof useCustomerStore>;
+  const mockParams = Promise.resolve({ id: 'test_customer_123' });
 
   beforeEach(() => {
     // Clear all mocks and reset localStorage properly
@@ -61,15 +68,17 @@ describe('Navigation Protection', () => {
       value: mockLocalStorage,
       writable: true,
     });
-    
-    // Clear any timers that might be running
-    jest.clearAllTimers();
-  });
 
-  afterEach(() => {
-    // Clean up any running timers
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
+    // Mock React.use to return resolved params
+    const mockReact = jest.mocked(React);
+    if (mockReact.use) {
+      mockReact.use.mockImplementation((promise: any) => {
+        if (promise === mockParams) {
+          return { id: 'test_customer_123' };
+        }
+        return promise;
+      });
+    }
   });
 
   describe('/plan-select page', () => {
@@ -77,14 +86,12 @@ describe('Navigation Protection', () => {
     let PlanSelectPage: React.ComponentType;
     
     beforeAll(async () => {
-      // Use fake timers for consistent testing
-      jest.useFakeTimers();
       // Dynamic import to ensure mocks are applied
       const pageModule = await import('../plan-select/page');
       PlanSelectPage = pageModule.default;
     });
 
-    describe('when no instance is stored', () => {
+    describe('when no instance is available', () => {
       beforeEach(() => {
         // Mock store with no selected instance
         mockUseCustomerStore.mockImplementation((selector) => {
@@ -105,13 +112,10 @@ describe('Navigation Protection', () => {
       test('redirects to homepage', async () => {
         render(<PlanSelectPage />);
 
-        // Fast-forward timers to trigger the setTimeout
-        jest.advanceTimersByTime(100);
-
-        // Should redirect to homepage
+        // Wait for the redirect to happen (end result)
         await waitFor(() => {
           expect(mockPush).toHaveBeenCalledWith('/');
-        }, { timeout: 200 });
+        }, { timeout: 1000 });
 
         // Should not render the main content
         expect(screen.queryByTestId('pricing-plans')).not.toBeInTheDocument();
@@ -122,7 +126,7 @@ describe('Navigation Protection', () => {
       const mockSetSelectedInstance = jest.fn();
 
       beforeEach(() => {
-        // Mock store with no selected instance initially
+        // Mock store with no selected instance initially, but with setSelectedInstance
         mockUseCustomerStore.mockImplementation((selector) => {
           const state: Partial<CustomerState> = {
             selectedInstance: null, // Not yet hydrated
@@ -146,18 +150,15 @@ describe('Navigation Protection', () => {
         );
       });
 
-      test('restores instance from localStorage and renders content', async () => {
+      test('restores instance from localStorage', async () => {
         render(<PlanSelectPage />);
 
-        // Fast-forward timers to trigger the setTimeout
-        jest.advanceTimersByTime(100);
-
-        // Should restore instance from localStorage
+        // Wait for the instance to be restored from localStorage (end result)
         await waitFor(() => {
           expect(mockSetSelectedInstance).toHaveBeenCalledWith('cloud-infra');
-        }, { timeout: 200 });
+        }, { timeout: 1000 });
 
-        // Should not redirect
+        // Should not redirect since instance was found
         expect(mockPush).not.toHaveBeenCalled();
       });
     });
@@ -176,13 +177,13 @@ describe('Navigation Protection', () => {
         });
       });
 
-      test('loads correctly and renders pricing plans', async () => {
+      test('renders pricing plans immediately', async () => {
         render(<PlanSelectPage />);
 
-        // Should render the main content
+        // Should render the main content (end result)
         await waitFor(() => {
           expect(screen.getByTestId('pricing-plans')).toBeInTheDocument();
-        });
+        }, { timeout: 1000 });
 
         expect(screen.getByText('Pricing Plans for ai-agents')).toBeInTheDocument();
         expect(mockPush).not.toHaveBeenCalled();
@@ -198,9 +199,7 @@ describe('Navigation Protection', () => {
       CustomerDashboardPage = dashboardModule.default;
     });
 
-    const mockParams = Promise.resolve({ id: 'test_customer_123' });
-
-    describe('when no instance is stored', () => {
+    describe('when no instance is available', () => {
       beforeEach(() => {
         mockUseCustomerStore.mockImplementation((selector) => {
           const state: Partial<CustomerState> = {
@@ -213,19 +212,17 @@ describe('Navigation Protection', () => {
           return typeof selector === 'function' ? selector(state as CustomerState) : state;
         });
 
-        // Use the consistent mockLocalStorage pattern
+        // Mock localStorage to return no data
         mockLocalStorage.getItem.mockReturnValue(null);
       });
 
-      test.skip('redirects to homepage', async () => {
+      test('redirects to homepage', async () => {
         render(<CustomerDashboardPage params={mockParams} />);
 
-        // Fast-forward timers to trigger the setTimeout (customer dashboard uses 100ms timeout)
-        jest.advanceTimersByTime(150);
-
+        // Wait for the redirect to happen (end result)
         await waitFor(() => {
           expect(mockPush).toHaveBeenCalledWith('/');
-        }, { timeout: 300 });
+        }, { timeout: 1000 });
 
         expect(screen.queryByTestId('customer-dashboard')).not.toBeInTheDocument();
       });
@@ -246,7 +243,7 @@ describe('Navigation Protection', () => {
           return typeof selector === 'function' ? selector(state as CustomerState) : state;
         });
 
-        // Use the consistent mockLocalStorage pattern
+        // Mock localStorage to have stored instance
         mockLocalStorage.getItem.mockReturnValue(
           JSON.stringify({
             state: {
@@ -258,18 +255,16 @@ describe('Navigation Protection', () => {
         );
       });
 
-      test.skip('restores instance from localStorage and renders dashboard', async () => {
-        render(<CustomerDashboardPage params={mockParams} />)
+      test('restores instance from localStorage', async () => {
+        render(<CustomerDashboardPage params={mockParams} />);
 
-        // Fast-forward timers to trigger the setTimeout
-        jest.advanceTimersByTime(150)
-
+        // Wait for the instance to be restored from localStorage (end result)
         await waitFor(() => {
-          expect(mockSetSelectedInstance).toHaveBeenCalledWith('cloud-infra')
-        }, { timeout: 200 })
+          expect(mockSetSelectedInstance).toHaveBeenCalledWith('cloud-infra');
+        }, { timeout: 1000 });
 
-        expect(mockPush).not.toHaveBeenCalled()
-      })
+        expect(mockPush).not.toHaveBeenCalled();
+      });
     });
 
     describe('when instance exists in store', () => {
@@ -286,12 +281,13 @@ describe('Navigation Protection', () => {
         });
       });
 
-      test('loads correctly and renders customer dashboard', async () => {
+      test('renders customer dashboard immediately', async () => {
         render(<CustomerDashboardPage params={mockParams} />);
 
+        // Should render the dashboard content (end result)
         await waitFor(() => {
           expect(screen.getByTestId('customer-dashboard')).toBeInTheDocument();
-        });
+        }, { timeout: 1000 });
 
         expect(screen.getByText('Customer: test_customer_123, Instance: cloud-infra')).toBeInTheDocument();
         expect(mockPush).not.toHaveBeenCalled();
@@ -299,7 +295,7 @@ describe('Navigation Protection', () => {
     });
   });
 
-  describe('localStorage parsing edge cases', () => {
+  describe('localStorage error handling', () => {
     let PlanSelectPage: React.ComponentType;
     
     beforeAll(async () => {
@@ -324,13 +320,10 @@ describe('Navigation Protection', () => {
 
       render(<PlanSelectPage />);
 
-      // Fast-forward timers to trigger the setTimeout
-      jest.advanceTimersByTime(100);
-
-      // Should handle error gracefully and redirect
+      // Should handle error gracefully and redirect (end result)
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/');
-      }, { timeout: 200 });
+      }, { timeout: 1000 });
     });
   });
 }); 
