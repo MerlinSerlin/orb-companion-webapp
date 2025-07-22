@@ -36,7 +36,7 @@ describe('Server Actions - Customer Management', () => {
         }
       };
 
-      mockCreateOrbClient.mockReturnValue(mockOrbClient as any);
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
 
       // Act
       const result = await createCustomer('John Doe', 'john.doe@example.com', 'cloud-infra');
@@ -71,7 +71,7 @@ describe('Server Actions - Customer Management', () => {
         }
       };
 
-      mockCreateOrbClient.mockReturnValue(mockOrbClient as any);
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
 
       // Act
       const result = await createCustomer('  Jane Marie Smith  ', 'jane.smith@example.com');
@@ -96,7 +96,7 @@ describe('Server Actions - Customer Management', () => {
         }
       };
 
-      mockCreateOrbClient.mockReturnValue(mockOrbClient as any);
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
 
       // Act
       const result = await createCustomer('John Doe', 'duplicate@example.com');
@@ -116,7 +116,7 @@ describe('Server Actions - Customer Management', () => {
         }
       };
 
-      mockCreateOrbClient.mockReturnValue(mockOrbClient as any);
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
 
       // Act
       const result = await createCustomer('John Doe', 'john@example.com');
@@ -143,7 +143,7 @@ describe('Server Actions - Customer Management', () => {
         }
       };
 
-      mockCreateOrbClient.mockReturnValue(mockOrbClient as any);
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
 
       // Act
       const result = await createCustomer('AI User', 'ai@example.com', 'ai-agents');
