@@ -144,7 +144,7 @@ describe('CustomerStore', () => {
   });
 
   describe('Logout Functionality', () => {
-    it('should clear all customer data while preserving selectedInstance', () => {
+    it('should clear all customer data including selectedInstance', () => {
       const { result } = renderHook(() => useCustomerStore());
       
       // Set up some state
@@ -175,11 +175,11 @@ describe('CustomerStore', () => {
         result.current.logout();
       });
       
-      // Verify customer data is cleared but selectedInstance is preserved
+      // Verify all customer data including selectedInstance is cleared
       expect(result.current.pendingPlanId).toBeNull();
       expect(result.current.customerId).toBeNull();
       expect(result.current.externalCustomerId).toBeNull();
-      expect(result.current.selectedInstance).toBe('cloud-infra'); // Should be preserved
+      expect(result.current.selectedInstance).toBeNull(); // Should be cleared
       expect(result.current.scheduledPlanChanges).toEqual({});
       
       // Verify localStorage.removeItem was called
@@ -211,7 +211,7 @@ describe('CustomerStore', () => {
       
       // Verify state is still cleared properly
       expect(result.current.customerId).toBeNull();
-      expect(result.current.selectedInstance).toBe('ai-agents'); // Should be preserved
+      expect(result.current.selectedInstance).toBeNull(); // Should be cleared
       
       // Restore localStorage
       Object.defineProperty(window, 'localStorage', {
@@ -248,7 +248,7 @@ describe('CustomerStore', () => {
       expect(result.current.pendingPlanId).toBeNull();
       expect(result.current.customerId).toBeNull();
       expect(result.current.externalCustomerId).toBeNull();
-      expect(result.current.selectedInstance).toBe('cloud-infra'); // Should be preserved
+      expect(result.current.selectedInstance).toBeNull(); // Should be cleared
       
       // Verify localStorage.removeItem was called
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('customer-storage');
