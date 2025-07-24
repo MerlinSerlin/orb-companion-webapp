@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { editPriceIntervalQuantity, removeFixedFeeQuantityTransition } from "@/app/actions/orb";
+import { editFixedFeeQuantityTransitions, removeFixedFeeQuantityTransition } from "@/app/actions/orb";
 import { toast } from "sonner";
 import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { ApiPreviewDialog } from "../../dialogs/api-preview-dialog";
@@ -169,7 +169,7 @@ export function ManageFixedPriceItemDialog({
     ].sort((a, b) => new Date(a.effective_date).getTime() - new Date(b.effective_date).getTime());
 
     try {
-      const result = await editPriceIntervalQuantity(subscriptionId, priceIntervalId, updatedSchedule, instance);
+      const result = await editFixedFeeQuantityTransitions(subscriptionId, priceIntervalId, updatedSchedule, instance);
       if (result.success) {
         toast.success(`${itemName} Change Scheduled`, {
           description: `Set to ${newQuantityState} effective ${effectiveDateStr}.`,

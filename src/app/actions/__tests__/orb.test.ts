@@ -3,8 +3,10 @@ jest.mock('@/lib/orb', () => ({
   createOrbClient: jest.fn(),
 }));
 
-import { createCustomer, createSubscription, getCustomerSubscriptions, getCustomerDetails, schedulePlanChange, unschedulePlanChange, removeFixedFeeQuantityTransition } from '../orb';
+import { createCustomer, createSubscription, getCustomerSubscriptions, getCustomerDetails, schedulePlanChange, unschedulePlanChange, removeFixedFeeQuantityTransition, editFixedFeeQuantityTransitions, addPriceInterval } from '../orb';
 import { createOrbClient } from '@/lib/orb';
+import { ORB_INSTANCES } from '@/lib/orb-config';
+import type { FixedFeeQuantityTransition } from '@/lib/types';
 
 const mockCreateOrbClient = createOrbClient as jest.MockedFunction<typeof createOrbClient>;
 
@@ -1194,6 +1196,558 @@ describe('Server Actions - Customer Management', () => {
       const result3 = await removeFixedFeeQuantityTransition('sub_123456789', 'interval_abc123', '');
       expect(result3.success).toBe(false);
       expect(result3.error).toBe('Missing required parameters for removing transition.');
+    });
+  });
+
+  describe('editFixedFeeQuantityTransitions', () => {
+    it('should successfully edit fixed fee quantity transitions', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      const transitions = [
+        { quantity: 5, effective_date: '2025-08-01' },
+        { quantity: 10, effective_date: '2025-09-01' }
+      ];
+
+      // Act
+      const result = await editFixedFeeQuantityTransitions('sub_transition_test', 'interval_abc123', transitions);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockCreateOrbClient).toHaveBeenCalledWith('cloud-infra');
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_transition_test', {
+        edit: [{
+          price_interval_id: 'interval_abc123',
+          fixed_fee_quantity_transitions: transitions
+        }]
+      });
+    });
+
+    it('should successfully edit fixed fee quantity transitions for ai-agents instance', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      const transitions = [
+        { quantity: 3, effective_date: '2025-08-15' }
+      ];
+
+      // Act
+      const result = await editFixedFeeQuantityTransitions('sub_ai_transition', 'interval_xyz789', transitions, 'ai-agents');
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockCreateOrbClient).toHaveBeenCalledWith('ai-agents');
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_ai_transition', {
+        edit: [{
+          price_interval_id: 'interval_xyz789',
+          fixed_fee_quantity_transitions: transitions
+        }]
+      });
+    });
+
+    it('should handle single transition for immediate quantity change', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      const singleTransition = [
+        { quantity: 1, effective_date: '2025-07-25' }
+      ];
+
+      // Act
+      const result = await editFixedFeeQuantityTransitions('sub_immediate', 'interval_immediate', singleTransition);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_immediate', {
+        edit: [{
+          price_interval_id: 'interval_immediate',
+          fixed_fee_quantity_transitions: singleTransition
+        }]
+      });
+    });
+
+    it('should handle multiple transitions for complex scheduling', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      const complexTransitions = [
+        { quantity: 2, effective_date: '2025-08-01' },
+        { quantity: 5, effective_date: '2025-09-01' },
+        { quantity: 8, effective_date: '2025-10-01' },
+        { quantity: 3, effective_date: '2025-11-01' }
+      ];
+
+      // Act
+      const result = await editFixedFeeQuantityTransitions('sub_complex', 'interval_complex', complexTransitions);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_complex', {
+        edit: [{
+          price_interval_id: 'interval_complex',
+          fixed_fee_quantity_transitions: complexTransitions
+        }]
+      });
+    });
+
+    it('should handle missing required parameters', async () => {
+      // Act & Assert - Missing subscriptionId
+      const result1 = await editFixedFeeQuantityTransitions('', 'interval_abc123', [{ quantity: 5, effective_date: '2025-08-01' }]);
+      expect(result1.success).toBe(false);
+      expect(result1.error).toBe('Missing required parameters for editing fixed fee quantity transitions.');
+
+      // Act & Assert - Missing priceIntervalId
+      const result2 = await editFixedFeeQuantityTransitions('sub_123456789', '', [{ quantity: 5, effective_date: '2025-08-01' }]);
+      expect(result2.success).toBe(false);
+      expect(result2.error).toBe('Missing required parameters for editing fixed fee quantity transitions.');
+
+      // Act & Assert - Missing transitions
+      const result3 = await editFixedFeeQuantityTransitions('sub_123456789', 'interval_abc123', []);
+      expect(result3.success).toBe(false);
+      expect(result3.error).toBe('Missing required parameters for editing fixed fee quantity transitions.');
+
+      // Act & Assert - Null transitions
+      const result4 = await editFixedFeeQuantityTransitions('sub_123456789', 'interval_abc123', null as unknown as FixedFeeQuantityTransition[]);
+      expect(result4.success).toBe(false);
+      expect(result4.error).toBe('Missing required parameters for editing fixed fee quantity transitions.');
+    });
+
+    it('should handle API configuration errors', async () => {
+      // Arrange - Mock ORB_INSTANCES to simulate missing API key
+      const originalApiKey = ORB_INSTANCES['cloud-infra'].apiKey;
+      Object.defineProperty(ORB_INSTANCES['cloud-infra'], 'apiKey', {
+        value: undefined,
+        writable: true,
+        configurable: true
+      });
+
+      // Act
+      const result = await editFixedFeeQuantityTransitions('sub_no_key', 'interval_test', [{ quantity: 5, effective_date: '2025-08-01' }]);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Server configuration error.');
+
+      // Restore original API key
+      Object.defineProperty(ORB_INSTANCES['cloud-infra'], 'apiKey', {
+        value: originalApiKey,
+        writable: true,
+        configurable: true
+      });
+    });
+
+    it('should handle API errors when editing transitions', async () => {
+      // Arrange
+      const apiError = new Error('Price interval not found');
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockRejectedValue(apiError)
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      const transitions = [{ quantity: 5, effective_date: '2025-08-01' }];
+
+      // Act
+      const result = await editFixedFeeQuantityTransitions('sub_error', 'interval_invalid', transitions);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Price interval not found');
+    });
+
+    it('should handle unknown errors during transition editing', async () => {
+      // Arrange
+      const unknownError = { message: 'Unknown error type' };
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockRejectedValue(unknownError)
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      const transitions = [{ quantity: 5, effective_date: '2025-08-01' }];
+
+      // Act
+      const result = await editFixedFeeQuantityTransitions('sub_unknown_error', 'interval_error', transitions);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('An unexpected error occurred.');
+    });
+
+    it('should handle zero quantity transitions for removing charges', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      const zeroTransitions = [
+        { quantity: 0, effective_date: '2025-08-01' }
+      ];
+
+      // Act
+      const result = await editFixedFeeQuantityTransitions('sub_zero_qty', 'interval_zero', zeroTransitions);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_zero_qty', {
+        edit: [{
+          price_interval_id: 'interval_zero',
+          fixed_fee_quantity_transitions: zeroTransitions
+        }]
+      });
+    });
+
+    it('should handle large quantity values for enterprise customers', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      const largeTransitions = [
+        { quantity: 1000, effective_date: '2025-08-01' },
+        { quantity: 5000, effective_date: '2025-09-01' }
+      ];
+
+      // Act
+      const result = await editFixedFeeQuantityTransitions('sub_enterprise', 'interval_enterprise', largeTransitions);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_enterprise', {
+        edit: [{
+          price_interval_id: 'interval_enterprise',
+          fixed_fee_quantity_transitions: largeTransitions
+        }]
+      });
+    });
+  });
+
+  describe('addPriceInterval', () => {
+    beforeEach(() => {
+      // Reset date mock for each test
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2025-07-24T10:30:00Z'));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should successfully add price interval with provided start date', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_test_123', 'price_abc456', '2025-08-01');
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockCreateOrbClient).toHaveBeenCalledWith('cloud-infra');
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_test_123', {
+        add: [{
+          price_id: 'price_abc456',
+          start_date: '2025-08-01'
+        }]
+      });
+    });
+
+    it('should successfully add price interval with ai-agents instance', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_ai_test', 'price_ai_789', '2025-09-15', 'ai-agents');
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockCreateOrbClient).toHaveBeenCalledWith('ai-agents');
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_ai_test', {
+        add: [{
+          price_id: 'price_ai_789',
+          start_date: '2025-09-15'
+        }]
+      });
+    });
+
+    it('should default to today when no start date provided', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_default_date', 'price_default_123');
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_default_date', {
+        add: [{
+          price_id: 'price_default_123',
+          start_date: '2025-07-24' // Today's date in UTC
+        }]
+      });
+    });
+
+    it('should default to today when null start date provided', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_null_date', 'price_null_456', null);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_null_date', {
+        add: [{
+          price_id: 'price_null_456',
+          start_date: '2025-07-24' // Today's date in UTC
+        }]
+      });
+    });
+
+    it('should handle missing required parameters', async () => {
+      // Act & Assert - Missing subscriptionId
+      const result1 = await addPriceInterval('', 'price_test123');
+      expect(result1.success).toBe(false);
+      expect(result1.error).toBe('Missing required parameters for adding price interval.');
+
+      // Act & Assert - Missing priceId
+      const result2 = await addPriceInterval('sub_test123', '');
+      expect(result2.success).toBe(false);
+      expect(result2.error).toBe('Missing required parameters for adding price interval.');
+    });
+
+    it('should validate start date format', async () => {
+      // Act & Assert - Invalid date format
+      const result1 = await addPriceInterval('sub_test', 'price_test', '2025/08/01');
+      expect(result1.success).toBe(false);
+      expect(result1.error).toBe('Invalid start date format. Use YYYY-MM-DD.');
+
+      // Act & Assert - Invalid date format with time
+      const result2 = await addPriceInterval('sub_test', 'price_test', '2025-08-01T10:30:00');
+      expect(result2.success).toBe(false);
+      expect(result2.error).toBe('Invalid start date format. Use YYYY-MM-DD.');
+
+      // Act & Assert - Invalid date format with dashes in wrong places
+      const result3 = await addPriceInterval('sub_test', 'price_test', '08-01-2025');
+      expect(result3.success).toBe(false);
+      expect(result3.error).toBe('Invalid start date format. Use YYYY-MM-DD.');
+    });
+
+    it('should handle API configuration errors', async () => {
+      // Arrange - Mock ORB_INSTANCES to simulate missing API key
+      const originalApiKey = ORB_INSTANCES['cloud-infra'].apiKey;
+      Object.defineProperty(ORB_INSTANCES['cloud-infra'], 'apiKey', {
+        value: undefined,
+        writable: true,
+        configurable: true
+      });
+
+      // Act
+      const result = await addPriceInterval('sub_no_key', 'price_test', '2025-08-01');
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Server configuration error.');
+
+      // Restore original API key
+      Object.defineProperty(ORB_INSTANCES['cloud-infra'], 'apiKey', {
+        value: originalApiKey,
+        writable: true,
+        configurable: true
+      });
+    });
+
+    it('should handle API errors when adding price interval', async () => {
+      // Arrange
+      const apiError = new Error('Price not found');
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockRejectedValue(apiError)
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_error', 'price_invalid', '2025-08-01');
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Price not found');
+    });
+
+    it('should handle unknown errors during price interval addition', async () => {
+      // Arrange
+      const unknownError = { message: 'Unknown error type' };
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockRejectedValue(unknownError)
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_unknown_error', 'price_error', '2025-08-01');
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('An unexpected error occurred.');
+    });
+
+    it('should handle future dates for scheduled price additions', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_future', 'price_future', '2025-12-31');
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_future', {
+        add: [{
+          price_id: 'price_future',
+          start_date: '2025-12-31'
+        }]
+      });
+    });
+
+    it('should handle past dates for historical price additions', async () => {
+      // Arrange
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_past', 'price_past', '2025-01-01');
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_past', {
+        add: [{
+          price_id: 'price_past',
+          start_date: '2025-01-01'
+        }]
+      });
+    });
+
+    it('should correctly format UTC date for different timezones', async () => {
+      // Arrange - Simulate different timezone by setting a specific time
+      jest.setSystemTime(new Date('2025-07-24T23:30:00Z')); // Late UTC time
+
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_timezone', 'price_timezone');
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_timezone', {
+        add: [{
+          price_id: 'price_timezone',
+          start_date: '2025-07-24' // Should still be 24th in UTC
+        }]
+      });
+    });
+
+    it('should handle edge case of month transitions in UTC', async () => {
+      // Arrange - Set time to end of month
+      jest.setSystemTime(new Date('2025-07-31T23:59:59Z'));
+
+      const mockOrbClient = {
+        subscriptions: {
+          priceIntervals: jest.fn().mockResolvedValue({})
+        }
+      };
+
+      mockCreateOrbClient.mockReturnValue(mockOrbClient as unknown as ReturnType<typeof createOrbClient>);
+
+      // Act
+      const result = await addPriceInterval('sub_month_end', 'price_month_end');
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockOrbClient.subscriptions.priceIntervals).toHaveBeenCalledWith('sub_month_end', {
+        add: [{
+          price_id: 'price_month_end',
+          start_date: '2025-07-31'
+        }]
+      });
     });
   });
 });

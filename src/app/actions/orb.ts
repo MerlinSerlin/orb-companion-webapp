@@ -213,13 +213,13 @@ export async function getCustomerDetails(customerId: string, instance: OrbInstan
   }
 }
 
-export async function editPriceIntervalQuantity(
+export async function editFixedFeeQuantityTransitions(
   subscriptionId: string,
   priceIntervalId: string,
   transitions: FixedFeeQuantityTransition[],
   instance: OrbInstance = 'cloud-infra'
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[Action] Editing price interval quantity for sub: ${subscriptionId}, interval: ${priceIntervalId}, instance: ${instance}`);
+  console.log(`[Action] Editing fixed fee quantity transitions for sub: ${subscriptionId}, interval: ${priceIntervalId}, instance: ${instance}`);
   console.log("[Action] Received Transitions:", transitions);
   
   const instanceConfig = ORB_INSTANCES[instance];
@@ -229,7 +229,7 @@ export async function editPriceIntervalQuantity(
     return { success: false, error: 'Server configuration error.' };
   }
   if (!subscriptionId || !priceIntervalId || !transitions || transitions.length === 0) {
-     return { success: false, error: 'Missing required parameters for editing price interval quantity.' };
+     return { success: false, error: 'Missing required parameters for editing fixed fee quantity transitions.' };
   }
 
   const payload = {
@@ -247,12 +247,12 @@ export async function editPriceIntervalQuantity(
     const instanceOrbClient = createOrbClient(instance);
     await instanceOrbClient.subscriptions.priceIntervals(subscriptionId, payload);
 
-    console.log(`[Action] Successfully edited price interval quantity for interval: ${priceIntervalId}`);
+    console.log(`[Action] Successfully edited fixed fee quantity transitions for interval: ${priceIntervalId}`);
     
     return { success: true };
 
   } catch (error) {
-    console.error("[Action] Error during price interval edit process:", error);
+    console.error("[Action] Error during fixed fee quantity transitions edit process:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     return { success: false, error: errorMessage };
   }
