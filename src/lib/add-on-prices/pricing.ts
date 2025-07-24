@@ -1,5 +1,5 @@
 import { useCustomerStore } from '@/lib/store/customer-store';
-import { ORB_INSTANCES } from '@/lib/orb-config';
+import { ORB_INSTANCES, isValidCompanyKey } from '@/lib/orb-config';
 
 // Define a type for the structure of individual add-on configurations
 export interface AddOnConfigDetail {
@@ -48,7 +48,13 @@ export const getAddOnPriceId = (addOnKey: string): string | null => {
   }
 
   const instanceConfig = ORB_INSTANCES[selectedInstance];
-  const companyKey = instanceConfig.companyKey as CompanyKeys;
+  
+  if (!isValidCompanyKey(instanceConfig.companyKey)) {
+    console.error(`Invalid company key: ${instanceConfig.companyKey}`);
+    return null;
+  }
+  
+  const companyKey = instanceConfig.companyKey;
   const companyMappings = ADD_ON_PRICE_MAPPINGS[companyKey];
 
   if (!companyMappings) {
@@ -56,7 +62,12 @@ export const getAddOnPriceId = (addOnKey: string): string | null => {
     return null;
   }
 
-  // Type assertion to treat addOnKey as a valid key of companyMappings
+  // Check if addOnKey exists in the company mappings
+  if (!(addOnKey in companyMappings)) {
+    console.warn(`Invalid addOnKey: ${addOnKey} for company: ${companyKey}`);
+    return null;
+  }
+  
   const typedAddOnKey = addOnKey as AddOnKeysFor<typeof companyKey>;
   const addOnConfig = companyMappings[typedAddOnKey];
 
@@ -77,11 +88,22 @@ export const getAddOnConfigByKey = (addOnKey: string): AddOnConfigDetail | null 
   }
 
   const instanceConfig = ORB_INSTANCES[selectedInstance];
-  const companyKey = instanceConfig.companyKey as CompanyKeys;
+  if (!isValidCompanyKey(instanceConfig.companyKey)) {
+    console.error(`Invalid company key: ${instanceConfig.companyKey}`);
+    return null;
+  }
+  
+  const companyKey = instanceConfig.companyKey;
   const companyMappings = ADD_ON_PRICE_MAPPINGS[companyKey];
 
   if (!companyMappings) {
     // console.warn(`No add-on mappings found for company: ${companyKey} in getAddOnConfigByKey`);
+    return null;
+  }
+  
+  // Check if addOnKey exists in the company mappings
+  if (!(addOnKey in companyMappings)) {
+    // console.warn(`Invalid addOnKey: ${addOnKey} for company: ${companyKey}`);
     return null;
   }
   
@@ -104,7 +126,13 @@ export const getCurrentInstanceAddOns = (): ConfiguredAddOnMappings[CompanyKeys]
   }
 
   const instanceConfig = ORB_INSTANCES[selectedInstance];
-  const companyKey = instanceConfig.companyKey as CompanyKeys;
+  
+  if (!isValidCompanyKey(instanceConfig.companyKey)) {
+    console.error(`Invalid company key: ${instanceConfig.companyKey}`);
+    return null;
+  }
+  
+  const companyKey = instanceConfig.companyKey;
 
   return ADD_ON_PRICE_MAPPINGS[companyKey] || null;
 };
@@ -122,20 +150,22 @@ export const getAddOnKeyByPriceId = (priceId: string): string | null => {
     console.error(`❌ Invalid selectedInstance: ${selectedInstance} in getAddOnKeyByPriceId.`);
     return null;
   }
-  const companyKey = instanceConfig.companyKey as CompanyKeys;
+  
+  if (!isValidCompanyKey(instanceConfig.companyKey)) {
+    console.error(`Invalid company key: ${instanceConfig.companyKey}`);
+    return null;
+  }
+  
+  const companyKey = instanceConfig.companyKey;
   const companyMappings = ADD_ON_PRICE_MAPPINGS[companyKey];
 
   if (!companyMappings) {
     return null;
   }
 
-  for (const key in companyMappings) {
-    // Make sure key is a valid add-on key for the company
-    const typedKey = key as AddOnKeysFor<typeof companyKey>;
-    if (Object.prototype.hasOwnProperty.call(companyMappings, typedKey)) {
-      if ((companyMappings[typedKey] as AddOnConfigDetail).priceId === priceId) {
-        return typedKey;
-      }
+  for (const [addOnKey, config] of Object.entries(companyMappings)) {
+    if (config.priceId === priceId) {
+      return addOnKey;
     }
   }
   return null;

@@ -15,6 +15,35 @@ import type {
   UnitConfig
 } from "@/lib/types";
 
+// Error type definitions for proper error handling
+type OrbApiError = {
+  status?: number;
+  detail?: string;
+  type?: string;
+  response?: {
+    data?: unknown;
+  };
+};
+
+type ExtendedError = Error & Partial<OrbApiError>;
+
+// Type guard to check if error has Orb API properties
+function isOrbApiError(error: unknown): error is ExtendedError {
+  return error !== null && 
+         typeof error === 'object' && 
+         ('status' in error || 'detail' in error || 'type' in error || 'response' in error);
+}
+
+// Type guard to check if error has axios-like response
+function hasAxiosResponse(error: unknown): error is { response: { data: unknown } } {
+  return error !== null && 
+         typeof error === 'object' && 
+         'response' in error &&
+         error.response !== null &&
+         typeof error.response === 'object' &&
+         'data' in error.response;
+}
+
 export async function createCustomer(name: string, email: string, instance: OrbInstance = 'cloud-infra') {
   try {
     console.log(`Creating customer with name: ${name}, email: ${email} for instance: ${instance}`)
@@ -83,16 +112,19 @@ export async function createSubscription(customerId: string, planId: string, sta
     }
   } catch (error) {
     console.error("Error subscribing customer to plan:", error)
-    console.error("Error details:", {
+    
+    const errorDetails = {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : 'No stack trace',
-      // @ts-expect-error - accessing error properties for debugging
-      status: error?.status,
-      // @ts-expect-error - accessing error detail property for debugging
-      detail: error?.detail,
-      // @ts-expect-error - accessing error type property for debugging
-      type: error?.type
-    });
+      ...(isOrbApiError(error) && {
+        status: error.status,
+        detail: error.detail,
+        type: error.type
+      })
+    };
+    
+    console.error("Error details:", errorDetails);
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to create subscription",
@@ -353,11 +385,11 @@ export async function editPriceIntervalSchedule(
   } catch (error) {
     console.error("[Action] Error editing price interval schedules:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-    // @ts-expect-error - error response type is unknown but may contain response.data from Orb API
-    if (error && error.response && error.response.data) {
-        // @ts-expect-error - accessing response.data which exists on axios errors but not typed
+    
+    if (hasAxiosResponse(error)) {
         console.error("[Action] Orb Error Details:", JSON.stringify(error.response.data, null, 2));
     }
+    
     return { success: false, error: errorMessage };
   }
 }
@@ -591,9 +623,7 @@ export async function schedulePlanChange(
     console.error("[Action] Error scheduling plan change:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     
-    // @ts-expect-error - error response type is unknown but may contain response.data from Orb API
-    if (error && error.response && error.response.data) {
-        // @ts-expect-error - accessing response.data which exists on axios errors but not typed
+    if (hasAxiosResponse(error)) {
         console.error("[Action] Orb Error Details:", JSON.stringify(error.response.data, null, 2));
     }
     
@@ -633,9 +663,7 @@ export async function unschedulePlanChange(
     console.error("[Action] Error unscheduling plan changes:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     
-    // @ts-expect-error - error response type is unknown but may contain response.data from Orb API
-    if (error && error.response && error.response.data) {
-        // @ts-expect-error - accessing response.data which exists on axios errors but not typed
+    if (hasAxiosResponse(error)) {
         console.error("[Action] Orb Error Details:", JSON.stringify(error.response.data, null, 2));
     }
     

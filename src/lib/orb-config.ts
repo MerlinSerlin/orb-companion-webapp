@@ -1,10 +1,12 @@
 export type OrbInstance = 'cloud-infra' | 'ai-agents';
 
+export type CompanyKey = 'Cloud_Infra' | 'AI_Agents';
+
 export const ORB_INSTANCES = {
   'cloud-infra': {
     name: 'Nimbus Scale',
     description: 'Cloud Infrastructure Platform',
-    companyKey: 'Cloud_Infra',
+    companyKey: 'Cloud_Infra' as const,
     apiKey: process.env.ORB_API_KEY_NIMBUS_SCALE_TEST,
     logo: '/cloud.svg',
     primaryColor: 'blue',
@@ -18,7 +20,7 @@ export const ORB_INSTANCES = {
   'ai-agents': {
     name: 'Neural Prime', 
     description: 'AI Agent Platform',
-    companyKey: 'AI_Agents',
+    companyKey: 'AI_Agents' as const,
     apiKey: process.env.ORB_API_KEY_AI_AGENT_TEST,
     logo: '/brain.svg',
     primaryColor: 'purple',
@@ -33,4 +35,8 @@ export const ORB_INSTANCES = {
 
 export function isValidInstance(instance: string): instance is OrbInstance {
   return instance in ORB_INSTANCES;
+}
+
+export function isValidCompanyKey(companyKey: string): companyKey is CompanyKey {
+  return companyKey === 'Cloud_Infra' || companyKey === 'AI_Agents';
 } 

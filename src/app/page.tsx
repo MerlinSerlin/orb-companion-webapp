@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Logo } from "@/components/logo"
 import { useCustomerStore } from "@/lib/store/customer-store"
 import { type OrbInstance } from "@/lib/orb-config"
-import { Brain, Cloud } from "lucide-react"
+import { Brain, Cloud, type LucideIcon } from "lucide-react"
 
 export default function HomePage() {
   const router = useRouter()
@@ -33,16 +33,22 @@ export default function HomePage() {
     }
   }
 
-  const instances = [
+  const instances: Array<{
+    key: OrbInstance;
+    title: string;
+    description: string;
+    icon: LucideIcon;
+    color: string;
+  }> = [
     {
-      key: 'cloud-infra' as OrbInstance,
+      key: 'cloud-infra',
       title: 'Cloud Infrastructure',
       description: 'Manage your cloud infrastructure billing and usage',
       icon: Cloud,
       color: 'bg-blue-500'
     },
     {
-      key: 'ai-agents' as OrbInstance,
+      key: 'ai-agents',
       title: 'AI Agents',
       description: 'Track AI agent usage and model consumption',
       icon: Brain,
