@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { editPriceIntervalQuantity, removeFixedFeeTransition } from "@/app/actions/orb";
+import { editPriceIntervalQuantity, removeFixedFeeQuantityTransition } from "@/app/actions/orb";
 import { toast } from "sonner";
 import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { ApiPreviewDialog } from "../../dialogs/api-preview-dialog";
@@ -66,11 +66,11 @@ export function ManageFixedPriceItemDialog({
   companyKey,
   planId
 }: ManageFixedPriceItemDialogProps) {
-
   const [newQuantityState, setNewQuantityState] = React.useState<number>(currentQuantity);
   const [effectiveDateState, setEffectiveDateState] = React.useState<Date | null>(null);
   const [isScheduling, setIsScheduling] = React.useState<boolean>(false);
   const [isRemoving, setIsRemoving] = React.useState<string | null>(null); // Stores effective_date of item being removed
+
 
   // Calculate minimum quantity based on plan configuration
   const minimumQuantity = React.useMemo(() => {
@@ -83,11 +83,10 @@ export function ManageFixedPriceItemDialog({
 
   // --- Helpers ---
   const getContextData = React.useCallback(() => {
-    if (!activeSubscription?.price_intervals) return { existingTransitions: [] as FixedFeeQuantityTransition[], itemPriceId: undefined as (string | undefined) };
+    if (!activeSubscription?.price_intervals) return { existingTransitions: [] as FixedFeeQuantityTransition[] };
     const interval = activeSubscription.price_intervals.find(pi => pi.id === priceIntervalId);
     return {
-        existingTransitions: interval?.fixed_fee_quantity_transitions?.sort((a,b) => new Date(a.effective_date).getTime() - new Date(b.effective_date).getTime()) ?? [] as FixedFeeQuantityTransition[],
-        itemPriceId: interval?.price?.id
+        existingTransitions: interval?.fixed_fee_quantity_transitions?.sort((a,b) => new Date(a.effective_date).getTime() - new Date(b.effective_date).getTime()) ?? [] as FixedFeeQuantityTransition[]
     };
   }, [activeSubscription, priceIntervalId]);
 
@@ -98,7 +97,7 @@ export function ManageFixedPriceItemDialog({
     return `${year}-${month}-${day}`;
   }, []);
 
-  const { existingTransitions, itemPriceId } = getContextData();
+  const { existingTransitions } = getContextData();
 
   // --- "Schedule Change" Tab Logic ---
   const minDateForScheduleTab = React.useMemo(() => {
@@ -161,8 +160,7 @@ export function ManageFixedPriceItemDialog({
     
     const newTransitionToAdd: FixedFeeQuantityTransition = {
       quantity: newQuantityState,
-      effective_date: effectiveDateStr,
-      price_id: itemPriceId
+      effective_date: effectiveDateStr
     };
 
     const updatedSchedule = [
@@ -197,22 +195,27 @@ export function ManageFixedPriceItemDialog({
   // Uncommented scheduleApiPayload
   const scheduleApiPayload = React.useMemo((): Record<string, JsonValue> => {
     // Guard against effectiveDateState being null before calling formatDateForInputInternal
-    if (!priceIntervalId || !effectiveDateState) return {} as Record<string, JsonValue>; 
+    if (!priceIntervalId || !effectiveDateState) return {}; 
     
     const newTransitionPreview: FixedFeeQuantityTransition = {
         quantity: newQuantityState,
-        effective_date: formatDateForInputInternal(effectiveDateState), // Safe now due to guard
-        price_id: itemPriceId
+        effective_date: formatDateForInputInternal(effectiveDateState) // Safe now due to guard
     };
     const scheduleForPreview: FixedFeeQuantityTransition[] = [
       ...existingTransitions.filter(t => t.effective_date !== newTransitionPreview.effective_date),
       newTransitionPreview
     ].sort((a,b) => new Date(a.effective_date).getTime() - new Date(b.effective_date).getTime());
 
+    // Transform to JsonValue-compatible structure
+    const jsonCompatibleTransitions = scheduleForPreview.map(t => ({
+      effective_date: t.effective_date,
+      quantity: t.quantity
+    }));
+
     return {
-      edit: [{ price_interval_id: priceIntervalId, fixed_fee_quantity_transitions: scheduleForPreview }]
-    } as Record<string, JsonValue>; 
-  }, [priceIntervalId, newQuantityState, effectiveDateState, existingTransitions, itemPriceId, formatDateForInputInternal]);
+      edit: [{ price_interval_id: priceIntervalId, fixed_fee_quantity_transitions: jsonCompatibleTransitions }]
+    }; 
+  }, [priceIntervalId, newQuantityState, effectiveDateState, existingTransitions, formatDateForInputInternal]);
 
   // --- "Manage Scheduled" Tab Logic ---
   const futureTransitions = React.useMemo(() => {
@@ -223,7 +226,7 @@ export function ManageFixedPriceItemDialog({
   const handleRemoveTransition = async (effectiveDateToRemove: string) => {
     setIsRemoving(effectiveDateToRemove);
     try {
-      const result = await removeFixedFeeTransition(subscriptionId, priceIntervalId, effectiveDateToRemove, instance);
+      const result = await removeFixedFeeQuantityTransition(subscriptionId, priceIntervalId, effectiveDateToRemove, instance);
       if (result.success) {
         toast.success("Scheduled Change Removed", {
           description: `The change scheduled for ${formatDate(effectiveDateToRemove)} has been removed.`,
@@ -372,14 +375,19 @@ export function ManageFixedPriceItemDialog({
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {futureTransitions.map((transition) => {
-                  const lineItemRemovePayload = {
+                  const filteredTransitions = (existingTransitions || []).filter(
+                    t => t.effective_date !== transition.effective_date
+                  ).map(t => ({
+                    effective_date: t.effective_date,
+                    quantity: t.quantity
+                  }));
+                  
+                  const lineItemRemovePayload: Record<string, JsonValue> = {
                     edit: [{
                       price_interval_id: priceIntervalId,
-                      fixed_fee_quantity_transitions: (existingTransitions || []).filter(
-                        t => t.effective_date !== transition.effective_date
-                      )
+                      fixed_fee_quantity_transitions: filteredTransitions
                     }]
-                  } as Record<string, JsonValue>;
+                  };
 
                   return (
                     <div key={transition.effective_date} className="flex items-center justify-between p-2 border rounded-md text-sm">

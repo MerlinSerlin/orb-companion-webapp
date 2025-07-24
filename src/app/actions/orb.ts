@@ -3,6 +3,7 @@
 import { createOrbClient } from "@/lib/orb"
 import type { OrbInstance } from "@/lib/orb-config"
 import { ORB_INSTANCES } from "@/lib/orb-config"
+import type Orb from 'orb-billing'
 import type { 
   GetSubscriptionsResult, 
   Subscription, 
@@ -11,7 +12,7 @@ import type {
   Price,
   PackageConfig,
   TieredConfig,
-  UnitConfig 
+  UnitConfig
 } from "@/lib/types";
 
 export async function createCustomer(name: string, email: string, instance: OrbInstance = 'cloud-infra') {
@@ -116,18 +117,16 @@ export async function getCustomerSubscriptions(customerId: string, instance: Orb
       };
     }
 
-    // Re-adding any type temporarily as SDK type is unknown
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const subscriptionsData: Subscription[] = orbResponse.data.map((sdkSub: any) => { 
+    const subscriptionsData: Subscription[] = orbResponse.data.map((sdkSub: Orb.Subscription) => { 
       const mappedSub = {
         id: sdkSub.id,
-        name: sdkSub.name,
-        currency: sdkSub.currency,
+        name: sdkSub.plan.name,
+        currency: sdkSub.plan.currency,
         status: sdkSub.status,
         start_date: sdkSub.start_date,
         end_date: sdkSub.end_date,
-        current_period_start: sdkSub.current_billing_period_start_date, 
-        current_period_end: sdkSub.current_billing_period_end_date, 
+        current_billing_period_start_date: sdkSub.current_billing_period_start_date, 
+        current_billing_period_end_date: sdkSub.current_billing_period_end_date, 
         plan: sdkSub.plan, 
         price_intervals: sdkSub.price_intervals, 
       };
@@ -440,7 +439,7 @@ async function getOrbSubscription(subscriptionId: string, instance: OrbInstance 
   }
 }
 
-export async function removeFixedFeeTransition(
+export async function removeFixedFeeQuantityTransition(
   subscriptionId: string,
   priceIntervalId: string,
   effectiveDateToRemove: string,

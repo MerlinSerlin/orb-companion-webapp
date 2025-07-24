@@ -112,7 +112,7 @@ export function PlanUpgradeDialog({
         const changeDate = changeOption === 'requested_date' && effectiveDateState 
           ? effectiveDateState.toISOString()
           : changeOption === 'end_of_subscription_term'
-          ? subscription.current_period_end || null
+          ? subscription.current_billing_period_end_date || null
           : new Date().toISOString(); // immediate
 
         setScheduledPlanChange(subscription.id, {
@@ -267,9 +267,9 @@ export function PlanUpgradeDialog({
           </div>
 
           {/* Current Period Info */}
-          {subscription.current_period_start && subscription.current_period_end && (
+          {subscription.current_billing_period_start_date && subscription.current_billing_period_end_date && (
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>Current billing period: {formatDate(subscription.current_period_start)} - {formatDate(subscription.current_period_end)}</p>
+              <p>Current billing period: {formatDate(subscription.current_billing_period_start_date)} - {formatDate(subscription.current_billing_period_end_date)}</p>
             </div>
           )}
         </div>

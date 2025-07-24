@@ -72,11 +72,8 @@ export const useCustomerStore = create<CustomerState>()(
         return state.scheduledPlanChanges[subscriptionId] || null;
       },
       logout: () => {
-        console.log('[Store Reset] Clearing customer session but preserving instance selection...');
-        set((state) => ({
-          ...initialState,
-          selectedInstance: state.selectedInstance, // Preserve instance selection
-        }));
+        console.log('[Store Reset] Clearing customer session and instance selection...');
+        set(initialState);
         
         // Clear localStorage
         if (typeof window !== 'undefined' && window.localStorage) {

@@ -23,7 +23,7 @@ import { useCustomerSubscriptions, useCustomerDetails } from "@/hooks/useCustome
 import { SubscriptionDetailsCard } from "./cards/subscription-details-card";
 import { EntitlementsCard } from "./cards/entitlements-card";
 import { CustomerPortalCard } from "./cards/customer-portal-card";
-import { removeFixedFeeTransition } from "@/app/actions/orb";
+import { removeFixedFeeQuantityTransition } from "@/app/actions/orb";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/formatters";
 
@@ -201,7 +201,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
         return;
     }
     try {
-      const result = await removeFixedFeeTransition(activeSubscription.id, priceIntervalId, effectiveDate);
+      const result = await removeFixedFeeQuantityTransition(activeSubscription.id, priceIntervalId, effectiveDate, currentInstance!);
       if (result.success) {
         toast.success("Scheduled Change Removed", { description: `The change scheduled for ${formatDate(effectiveDate)} has been removed.` });
         refreshSubscriptionData();
@@ -331,7 +331,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
     <>
       <Header />
       <main className="container mx-auto px-4 py-8">
-          <Tabs defaultValue="subscriptions" className="space-y-6">
+        <Tabs defaultValue="subscriptions" className="space-y-6">
             <TabsList>
               <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
               <TabsTrigger value="customer-portal">Customer Portal</TabsTrigger>
@@ -375,7 +375,7 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
           priceAppliesToFirstUnit={featureToAdjust.priceModelType === "per_unit_with_minimum"}
           instance={currentInstance}
           activeSubscription={activeSubscription}
-          currentPeriodStartDate={activeSubscription.current_period_start}
+          currentPeriodStartDate={activeSubscription.current_billing_period_start_date}
           onScheduleSuccess={handleDialogSuccessAndClose}
           onRemoveSuccess={handleDialogSuccessAndClose}
           companyKey={ORB_INSTANCES[currentInstance]?.companyKey}
