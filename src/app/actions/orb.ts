@@ -534,35 +534,6 @@ export async function removeFixedFeeQuantityTransition(
   }
 }
 
-export async function listPlans(instance: OrbInstance = 'cloud-infra') {
-  try {
-    console.log(`Listing plans for instance: ${instance}`)
-    
-    const instanceOrbClient = createOrbClient(instance);
-    const plans = await instanceOrbClient.plans.list();
-    
-    console.log(`Found ${plans.data.length} plans in ${instance} instance:`);
-    plans.data.forEach((plan, index) => {
-      console.log(`  ${index + 1}. ID: ${plan.id}, Name: ${plan.name}`);
-    });
-    
-    return {
-      success: true,
-      plans: plans.data.map(plan => ({
-        id: plan.id,
-        name: plan.name,
-        description: plan.description,
-        status: plan.status
-      }))
-    };
-  } catch (error) {
-    console.error(`Error listing plans for ${instance}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to list plans"
-    };
-  }
-}
 
 export async function schedulePlanChange(
   subscriptionId: string,
