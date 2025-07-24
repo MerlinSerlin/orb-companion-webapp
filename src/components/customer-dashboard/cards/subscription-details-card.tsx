@@ -156,14 +156,14 @@ export function SubscriptionDetailsCard({ subscription, companyKey, onUpgradeSuc
                 </div>
               </div>
               
-              {subscription.current_period_start && subscription.current_period_end && (
+              {subscription.current_billing_period_start_date && subscription.current_billing_period_end_date && (
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
                     Billing Period
                   </div>
                   <div className="text-sm">
-                    {formatDate(subscription.current_period_start)} - {formatDate(subscription.current_period_end)}
+                    {formatDate(subscription.current_billing_period_start_date)} - {formatDate(subscription.current_billing_period_end_date)}
                   </div>
                 </div>
               )}

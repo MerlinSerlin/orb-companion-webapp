@@ -9,8 +9,8 @@ export interface Subscription {
   status: 'active' | 'canceled' | 'ended' | 'pending' | 'upcoming';
   start_date?: string | null;
   end_date?: string | null;
-  current_period_start?: string | null;
-  current_period_end?: string | null;
+  current_billing_period_start_date?: string | null;
+  current_billing_period_end_date?: string | null;
   plan?: Plan | null;
   price_intervals?: PriceInterval[] | null;
   // Fields for tracking scheduled plan changes
@@ -123,8 +123,8 @@ export interface TieredPackageTier {
   package_size: number;      // Size of packages in this tier
 }
 
-export interface TieredPackageConfig {
-  tiers: TieredPackageTier[];
+export interface TieredPackageConfig extends Record<string, unknown> {
+  tiers?: TieredPackageTier[];
 }
 
 export interface Price {
@@ -142,22 +142,9 @@ export interface Price {
   tiered_package_config?: TieredPackageConfig | null;
 }
 
-// Add type for the quantity transition object
-export interface FixedPriceQuantityTransition {
-  effective_date: string; 
-  quantity: number;
-  price_id?: string; // Optional price_id as seen in logs
-  [key: string]: string | number | undefined; // Add index signature
-}
-
-// Ensure this interface name matches what's used elsewhere, e.g., FixedFeeQuantityTransition
-// If it's FixedFeeQuantityTransition, adjust the name above.
-// Assuming it might be used as FixedFeeQuantityTransition based on previous context:
 export interface FixedFeeQuantityTransition { 
   effective_date: string;
   quantity: number;
-  price_id?: string;
-  [key: string]: string | number | undefined; // Add index signature
 }
 
 export interface PriceInterval {
