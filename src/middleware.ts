@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { isValidSession } from '@/lib/session-store'
 
 const ENABLE_PASSWORD_PROTECTION = process.env.ENABLE_PASSWORD_PROTECTION === 'true'
-const APP_PASSWORD = process.env.APP_PASSWORD || 'orb-companion-2024'
 
 export function middleware(request: NextRequest) {
   // Skip password protection if not enabled
@@ -20,10 +20,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check for authentication cookie
+  // Check for authentication cookie and validate session
   const authCookie = request.cookies.get('app-auth')
   
-  if (!authCookie || authCookie.value !== APP_PASSWORD) {
+  if (!authCookie || !isValidSession(authCookie.value)) {
     // Redirect to login page
     return NextResponse.redirect(new URL('/login', request.url))
   }
