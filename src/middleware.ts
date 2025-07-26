@@ -4,7 +4,7 @@ import { isValidSession } from '@/lib/session-store'
 
 const ENABLE_PASSWORD_PROTECTION = process.env.ENABLE_PASSWORD_PROTECTION === 'true'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Skip password protection if not enabled
   if (!ENABLE_PASSWORD_PROTECTION) {
     return NextResponse.next()
@@ -23,7 +23,7 @@ export function middleware(request: NextRequest) {
   // Check for authentication cookie and validate session
   const authCookie = request.cookies.get('app-auth')
   
-  if (!authCookie || !isValidSession(authCookie.value)) {
+  if (!authCookie || !(await isValidSession(authCookie.value))) {
     // Redirect to login page
     return NextResponse.redirect(new URL('/login', request.url))
   }
