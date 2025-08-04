@@ -14,6 +14,8 @@ import type {
   TieredConfig,
   UnitConfig
 } from "@/lib/types";
+import { buildRandomizedEventPayload, buildManualEventPayload } from "@/lib/events/payload-builder";
+import type { SendEventResult } from "@/lib/events/types";
 
 // Error type definitions for proper error handling
 type OrbApiError = {
@@ -640,4 +642,120 @@ export async function unschedulePlanChange(
     
     return { success: false, error: errorMessage };
   }
-} 
+}
+
+// Send a randomized event to Orb
+export async function sendRandomizedEvent(
+  customerId: string,
+  instance: OrbInstance = 'ai-agents',
+  externalCustomerId?: string,
+  testMode: boolean = false
+): Promise<SendEventResult> {
+  try {
+    console.log(`[Event Ingestion] Sending randomized event for customer ${customerId} in instance: ${instance}`);
+    
+    // Build the event payload
+    const event = buildRandomizedEventPayload(instance, customerId, externalCustomerId);
+    const payload = {
+      events: [event]
+    };
+
+    console.log(`[Event Ingestion] Generated payload:`, JSON.stringify(payload, null, 2));
+
+    // If test mode, just return the payload without sending
+    if (testMode) {
+      console.log(`[Event Ingestion] Test mode enabled - not sending to Orb`);
+      return {
+        success: true,
+        event,
+        debug: {
+          payload
+        }
+      };
+    }
+
+    // Create Orb client and send the event
+    const orbClient = createOrbClient(instance);
+    const response = await orbClient.events.ingest(payload);
+
+    console.log(`[Event Ingestion] Successfully sent event to Orb:`, response);
+
+    return {
+      success: true,
+      event,
+      debug: {
+        payload,
+        response
+      }
+    };
+
+  } catch (error) {
+    console.error(`[Event Ingestion] Error sending event:`, error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send event';
+    
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+}
+
+// Send a manual event to Orb with custom property values
+export async function sendManualEvent(
+  customerId: string,
+  manualProperties: Record<string, string | number | boolean>,
+  instance: OrbInstance = 'ai-agents',
+  externalCustomerId?: string,
+  testMode: boolean = false
+): Promise<SendEventResult> {
+  try {
+    console.log(`[Event Ingestion] Sending manual event for customer ${customerId} in instance: ${instance}`);
+    console.log(`[Event Ingestion] Manual properties:`, manualProperties);
+    
+    // Build the event payload
+    const event = buildManualEventPayload(instance, customerId, manualProperties, externalCustomerId);
+    const payload = {
+      events: [event]
+    };
+
+    console.log(`[Event Ingestion] Generated payload:`, JSON.stringify(payload, null, 2));
+
+    // If test mode, just return the payload without sending
+    if (testMode) {
+      console.log(`[Event Ingestion] Test mode enabled - not sending to Orb`);
+      return {
+        success: true,
+        event,
+        debug: {
+          payload
+        }
+      };
+    }
+
+    // Create Orb client and send the event
+    const orbClient = createOrbClient(instance);
+    const response = await orbClient.events.ingest(payload);
+
+    console.log(`[Event Ingestion] Successfully sent event to Orb:`, response);
+
+    return {
+      success: true,
+      event,
+      debug: {
+        payload,
+        response
+      }
+    };
+
+  } catch (error) {
+    console.error(`[Event Ingestion] Error sending event:`, error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send event';
+    
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+}
