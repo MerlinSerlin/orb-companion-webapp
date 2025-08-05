@@ -28,6 +28,12 @@ export type AIAgentEventProperties = {
   user_id: string;
 };
 
+// Cloud Infrastructure specific event properties
+export type CloudInfraEventProperties = {
+  bandwidth_MB: number;
+  runtime: string;
+};
+
 // Template configuration types
 export type PropertyTemplate = {
   type: 'enum' | 'range' | 'string';

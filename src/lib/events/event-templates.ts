@@ -37,8 +37,24 @@ export const AI_AGENTS_TEMPLATE: EventTemplate = {
   }
 };
 
+// Cloud Infrastructure event template
+export const CLOUD_INFRA_TEMPLATE: EventTemplate = {
+  eventName: 'Nimbus_Scale_Network_Request',
+  properties: {
+    bandwidth_MB: {
+      type: 'range',
+      min: 100,
+      max: 10000
+    },
+    runtime: {
+      type: 'enum',
+      options: ['node', 'edge']
+    }
+  }
+};
+
 // Template registry by instance
 export const EVENT_TEMPLATES = {
   'ai-agents': AI_AGENTS_TEMPLATE,
-  // 'cloud-infra': CLOUD_INFRA_TEMPLATE // Future implementation
+  'cloud-infra': CLOUD_INFRA_TEMPLATE
 } as const;

@@ -45,10 +45,6 @@ export function buildRandomizedEventPayload(
   customerId: string,
   externalCustomerId?: string
 ): OrbEvent {
-  // For now, only support AI agents instance
-  if (instance !== 'ai-agents') {
-    throw new Error(`Event templates only available for ai-agents instance currently`);
-  }
 
   const template = EVENT_TEMPLATES[instance];
   if (!template) {
@@ -83,10 +79,6 @@ export function buildManualEventPayload(
   manualProperties: Record<string, string | number | boolean>,
   externalCustomerId?: string
 ): OrbEvent {
-  // For now, only support AI agents instance
-  if (instance !== 'ai-agents') {
-    throw new Error(`Event templates only available for ai-agents instance currently`);
-  }
 
   const template = EVENT_TEMPLATES[instance];
   if (!template) {
