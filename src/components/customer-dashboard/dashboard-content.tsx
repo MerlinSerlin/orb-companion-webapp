@@ -362,7 +362,11 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
               <CustomerPortalCard portalUrl={customerDetails?.portal_url} />
             </TabsContent>
             <TabsContent value="events">
-              <EventsCard customerId={stableCustomerId!} instance={currentInstance!} />
+              <EventsCard 
+                customerId={stableCustomerId!} 
+                instance={currentInstance!} 
+                subscription={activeSubscription}
+              />
             </TabsContent>
           </Tabs>
       </main>

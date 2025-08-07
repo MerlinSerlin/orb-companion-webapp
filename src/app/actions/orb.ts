@@ -701,29 +701,28 @@ export async function sendRandomizedEvent(
   }
 }
 
-// Send a manual event to Orb with custom property values
+// Send a manual event to Orb with user-specified properties
 export async function sendManualEvent(
   customerId: string,
-  manualProperties: Record<string, string | number | boolean>,
   instance: OrbInstance = 'ai-agents',
+  manualProperties: Record<string, string | number | boolean>,
   externalCustomerId?: string,
   testMode: boolean = false
 ): Promise<SendEventResult> {
   try {
-    console.log(`[Event Ingestion] Sending manual event for customer ${customerId} in instance: ${instance}`);
-    console.log(`[Event Ingestion] Manual properties:`, manualProperties);
+    console.log(`[Manual Event Ingestion] Sending manual event for customer ${customerId} in instance: ${instance}`, manualProperties);
     
-    // Build the event payload
+    // Build the event payload with manual properties
     const event = buildManualEventPayload(instance, customerId, manualProperties, externalCustomerId);
     const payload = {
       events: [event]
     };
 
-    console.log(`[Event Ingestion] Generated payload:`, JSON.stringify(payload, null, 2));
+    console.log(`[Manual Event Ingestion] Generated payload:`, JSON.stringify(payload, null, 2));
 
     // If test mode, just return the payload without sending
     if (testMode) {
-      console.log(`[Event Ingestion] Test mode enabled - not sending to Orb`);
+      console.log(`[Manual Event Ingestion] Test mode enabled - not sending to Orb`);
       return {
         success: true,
         event,
@@ -737,7 +736,7 @@ export async function sendManualEvent(
     const orbClient = createOrbClient(instance);
     const response = await orbClient.events.ingest(payload);
 
-    console.log(`[Event Ingestion] Successfully sent event to Orb:`, response);
+    console.log(`[Manual Event Ingestion] Successfully sent manual event to Orb:`, response);
 
     return {
       success: true,
@@ -749,9 +748,39 @@ export async function sendManualEvent(
     };
 
   } catch (error) {
-    console.error(`[Event Ingestion] Error sending event:`, error);
+    console.error(`[Manual Event Ingestion] Error sending manual event:`, error);
     
-    const errorMessage = error instanceof Error ? error.message : 'Failed to send event';
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send manual event';
+    
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+}
+
+// Get billable metric details including metadata
+export async function getBillableMetric(
+  metricId: string,
+  instance: OrbInstance = 'ai-agents'
+) {
+  try {
+    console.log(`[Billable Metric] Fetching metric ${metricId} for instance: ${instance}`);
+    
+    const orbClient = createOrbClient(instance);
+    const metric = await orbClient.metrics.fetch(metricId);
+
+    console.log(`[Billable Metric] Successfully fetched metric:`, metric);
+
+    return {
+      success: true,
+      metric
+    };
+
+  } catch (error) {
+    console.error(`[Billable Metric] Error fetching metric ${metricId}:`, error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch billable metric';
     
     return {
       success: false,

@@ -32,6 +32,104 @@ describe('Event Templates', () => {
     });
   });
 
+  describe('AI Agents template payload generation', () => {
+    it('should generate valid AI agents events with randomized properties', () => {
+      const event = buildRandomizedEventPayload('ai-agents', 'customer-123', 'external-123');
+      
+      expect(event.event_name).toBe('agent_request');
+      expect(event.external_customer_id).toBe('external-123');
+      expect(event.customer_id).toBeUndefined();
+      expect(['claude-opus-4', 'claude-sonnet-4', 'claude-sonnet-3.7', 'o3', 'o4-mini', 'gemini-2.5-flash', 'gemini-2.5-pro']).toContain(event.properties.model);
+      expect(event.properties.num_steps).toBeGreaterThanOrEqual(1);
+      expect(event.properties.num_steps).toBeLessThanOrEqual(100);
+      expect(event.properties.num_tokens).toBeGreaterThanOrEqual(100);
+      expect(event.properties.num_tokens).toBeLessThanOrEqual(10000);
+      expect(['Sarah', 'Hari', 'Taylor', 'Marshall']).toContain(event.properties.user_id);
+      expect(event.idempotency_key).toMatch(/^[0-9a-f-]{36}_\d{14}$/);
+      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    });
+
+    it('should generate AI agents events with manual properties', () => {
+      const manualProperties = {
+        model: 'claude-opus-4',
+        num_steps: 25,
+        num_tokens: 2500,
+        user_id: 'Taylor'
+      };
+      
+      const event = buildManualEventPayload('ai-agents', 'customer-123', manualProperties, 'external-123');
+      
+      expect(event.event_name).toBe('agent_request');
+      expect(event.external_customer_id).toBe('external-123');
+      expect(event.customer_id).toBeUndefined();
+      expect(event.properties.model).toBe('claude-opus-4');
+      expect(event.properties.num_steps).toBe(25);
+      expect(event.properties.num_tokens).toBe(2500);
+      expect(event.properties.user_id).toBe('Taylor');
+      expect(event.idempotency_key).toMatch(/^[0-9a-f-]{36}_\d{14}$/);
+      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    });
+
+    it('should use customer_id when external_customer_id is not provided for AI agents', () => {
+      const manualProperties = {
+        model: 'gemini-2.5-flash',
+        num_steps: 75,
+        num_tokens: 5000,
+        user_id: 'Marshall'
+      };
+      
+      const event = buildManualEventPayload('ai-agents', 'customer-456', manualProperties);
+      
+      expect(event.customer_id).toBe('customer-456');
+      expect(event.external_customer_id).toBeUndefined();
+      expect(event.event_name).toBe('agent_request');
+      expect(event.properties.model).toBe('gemini-2.5-flash');
+      expect(event.properties.num_steps).toBe(75);
+      expect(event.properties.num_tokens).toBe(5000);
+      expect(event.properties.user_id).toBe('Marshall');
+    });
+
+    it('should use defaults for missing manual properties and randomize others', () => {
+      const manualProperties = {
+        model: 'o3'
+      };
+      
+      const event = buildManualEventPayload('ai-agents', 'customer-789', manualProperties);
+      
+      expect(event.properties.model).toBe('o3');
+      expect(event.properties.num_steps).toBeGreaterThanOrEqual(1);
+      expect(event.properties.num_steps).toBeLessThanOrEqual(100);
+      expect(event.properties.num_tokens).toBeGreaterThanOrEqual(100);
+      expect(event.properties.num_tokens).toBeLessThanOrEqual(10000);
+      expect(['Sarah', 'Hari', 'Taylor', 'Marshall']).toContain(event.properties.user_id);
+    });
+
+    it('should validate all AI agent model options are available', () => {
+      const expectedModels = ['claude-opus-4', 'claude-sonnet-4', 'claude-sonnet-3.7', 'o3', 'o4-mini', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+      const template = EVENT_TEMPLATES['ai-agents'];
+      
+      expect(template.properties.model.options).toEqual(expectedModels);
+    });
+
+    it('should generate different randomized values across multiple calls', () => {
+      const events = Array.from({ length: 50 }, () => 
+        buildRandomizedEventPayload('ai-agents', 'test-customer')
+      );
+      
+      // Check that we get different models (with 50 calls, we should see variety)
+      const uniqueModels = new Set(events.map(e => e.properties.model));
+      expect(uniqueModels.size).toBeGreaterThan(1);
+      
+      // Check that we get different step counts
+      const uniqueSteps = new Set(events.map(e => e.properties.num_steps));
+      expect(uniqueSteps.size).toBeGreaterThan(1);
+      
+      // Check that we get different token counts
+      const uniqueTokens = new Set(events.map(e => e.properties.num_tokens));
+      expect(uniqueTokens.size).toBeGreaterThan(1);
+    });
+  });
+
   describe('Cloud Infrastructure template', () => {
     it('should have correct structure for Nimbus_Scale_Network_Request event', () => {
       const template = EVENT_TEMPLATES['cloud-infra'];

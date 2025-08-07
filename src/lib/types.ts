@@ -127,6 +127,12 @@ export interface TieredPackageConfig extends Record<string, unknown> {
   tiers?: TieredPackageTier[];
 }
 
+export interface BillableMetric {
+  id: string;
+  name?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface Price {
   id: string;
   name: string;
@@ -134,6 +140,7 @@ export interface Price {
   model_type: 'unit' | 'tiered' | 'package' | 'matrix' | 'tiered_package' | 'grouped_tiered' | string; 
   currency: string;
   item?: Item | null;
+  billable_metric?: BillableMetric | null;
   fixed_price_quantity?: number | null;
   package_config?: PackageConfig | null; 
   tiered_config?: TieredConfig | null; 
