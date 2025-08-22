@@ -46,7 +46,9 @@ npm install orb-billing
    
    ```env
    # Orb API Keys for different instances
+   # Nimbus Scale Test points to Marshall's Account (test mode)
    ORB_API_KEY_NIMBUS_SCALE_TEST=your_cloud_infra_api_key
+   # AI Agent Test points to AI Agent Demo Account (test mode)
    ORB_API_KEY_AI_AGENT_TEST=your_ai_agents_api_key
    
    # Orb Webhook Secret
@@ -109,6 +111,7 @@ Each instance has its own branding, features, and API configuration managed in `
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4, shadcn/ui components
 - **State Management**: Zustand with persistence
+- **Server State**: TanStack Query (React Query) for API data caching
 - **API Integration**: orb-billing SDK
 - **Testing**: Jest with React Testing Library
 - **Animation**: Framer Motion
