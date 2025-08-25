@@ -364,7 +364,6 @@ export function CustomerDashboardContent({ customerId: customerIdProp, instance:
             <TabsContent value="events">
               <EventsCard 
                 customerId={stableCustomerId!} 
-                instance={currentInstance!} 
                 subscription={activeSubscription}
               />
             </TabsContent>
