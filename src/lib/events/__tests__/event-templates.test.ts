@@ -135,14 +135,15 @@ describe('Event Templates', () => {
       const template = EVENT_TEMPLATES['cloud-infra'];
       
       expect(template.eventName).toBe('Nimbus_Scale_Network_Request');
-      expect(template.properties.bandwidth_MB).toMatchObject({
+      expect(template.properties.bandwidth_bytes).toMatchObject({
         type: 'range',
-        min: 100,
-        max: 10000
+        min: 10000000,
+        max: 100000000
       });
       expect(template.properties.runtime).toMatchObject({
         type: 'enum',
-        options: ['node', 'edge']
+        options: ['node', 'edge'],
+        default: 'edge'
       });
     });
 
@@ -152,8 +153,8 @@ describe('Event Templates', () => {
       expect(event.event_name).toBe('Nimbus_Scale_Network_Request');
       expect(event.external_customer_id).toBe('acme');
       expect(event.customer_id).toBeUndefined();
-      expect(event.properties.bandwidth_MB).toBeGreaterThanOrEqual(100);
-      expect(event.properties.bandwidth_MB).toBeLessThanOrEqual(10000);
+      expect(event.properties.bandwidth_bytes).toBeGreaterThanOrEqual(10000000);
+      expect(event.properties.bandwidth_bytes).toBeLessThanOrEqual(100000000);
       expect(['node', 'edge']).toContain(event.properties.runtime);
       expect(event.idempotency_key).toMatch(/^[0-9a-f-]{36}_\d{14}$/);
       expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
@@ -161,7 +162,7 @@ describe('Event Templates', () => {
 
     it('should generate valid cloud infra events with manual properties', () => {
       const manualProperties = {
-        bandwidth_MB: 5027,
+        bandwidth_bytes: 50000000,
         runtime: 'node'
       };
       
@@ -170,17 +171,17 @@ describe('Event Templates', () => {
       expect(event.event_name).toBe('Nimbus_Scale_Network_Request');
       expect(event.external_customer_id).toBe('acme');
       expect(event.customer_id).toBeUndefined();
-      expect(event.properties.bandwidth_MB).toBe(5027);
+      expect(event.properties.bandwidth_bytes).toBe(50000000);
       expect(event.properties.runtime).toBe('node');
       expect(event.idempotency_key).toMatch(/^[0-9a-f-]{36}_\d{14}$/);
       expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     });
 
-    it('should validate bandwidth_MB is within acceptable range', () => {
+    it('should validate bandwidth_bytes is within acceptable range', () => {
       const template = EVENT_TEMPLATES['cloud-infra'];
       
-      expect(template.properties.bandwidth_MB.min).toBe(100);
-      expect(template.properties.bandwidth_MB.max).toBe(10000);
+      expect(template.properties.bandwidth_bytes.min).toBe(10000000);
+      expect(template.properties.bandwidth_bytes.max).toBe(100000000);
     });
 
     it('should validate runtime options are node or edge', () => {
@@ -189,15 +190,15 @@ describe('Event Templates', () => {
       expect(template.properties.runtime.options).toEqual(['node', 'edge']);
     });
 
-    it('should generate randomized bandwidth_MB values within valid range over multiple calls', () => {
+    it('should generate randomized bandwidth_bytes values within valid range over multiple calls', () => {
       const events = Array.from({ length: 20 }, () => 
         buildRandomizedEventPayload('cloud-infra', 'test-customer')
       );
       
       events.forEach(event => {
-        expect(event.properties.bandwidth_MB).toBeGreaterThanOrEqual(100);
-        expect(event.properties.bandwidth_MB).toBeLessThanOrEqual(10000);
-        expect(typeof event.properties.bandwidth_MB).toBe('number');
+        expect(event.properties.bandwidth_bytes).toBeGreaterThanOrEqual(10000000);
+        expect(event.properties.bandwidth_bytes).toBeLessThanOrEqual(100000000);
+        expect(typeof event.properties.bandwidth_bytes).toBe('number');
       });
     });
 
@@ -214,7 +215,7 @@ describe('Event Templates', () => {
 
     it('should match the example payload structure from user requirements', () => {
       const manualProperties = {
-        bandwidth_MB: 5027,
+        bandwidth_bytes: 50000000,
         runtime: 'node'
       };
       
@@ -227,7 +228,7 @@ describe('Event Templates', () => {
         external_customer_id: 'acme',
         timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         properties: {
-          bandwidth_MB: 5027,
+          bandwidth_bytes: 50000000,
           runtime: 'node'
         }
       });
@@ -238,7 +239,7 @@ describe('Event Templates', () => {
 
     it('should use customer_id when external_customer_id is not provided', () => {
       const manualProperties = {
-        bandwidth_MB: 2500,
+        bandwidth_bytes: 25000000,
         runtime: 'edge'
       };
       
@@ -248,7 +249,7 @@ describe('Event Templates', () => {
       expect(event.customer_id).toBe('NM56KxKNn855iUhe');
       expect(event.external_customer_id).toBeUndefined();
       expect(event.event_name).toBe('Nimbus_Scale_Network_Request');
-      expect(event.properties.bandwidth_MB).toBe(2500);
+      expect(event.properties.bandwidth_bytes).toBe(25000000);
       expect(event.properties.runtime).toBe('edge');
     });
   });

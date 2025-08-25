@@ -41,14 +41,15 @@ export const AI_AGENTS_TEMPLATE: EventTemplate = {
 export const CLOUD_INFRA_TEMPLATE: EventTemplate = {
   eventName: 'Nimbus_Scale_Network_Request',
   properties: {
-    bandwidth_MB: {
+    bandwidth_bytes: {
       type: 'range',
-      min: 100,
-      max: 10000
+      min: 10000000,
+      max: 100000000
     },
     runtime: {
       type: 'enum',
-      options: ['node', 'edge']
+      options: ['node', 'edge'],
+      default: 'edge'
     }
   }
 };
